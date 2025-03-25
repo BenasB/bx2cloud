@@ -1,0 +1,17 @@
+syntax = "proto3";
+package bx2cloud;
+
+option go_package = "github.com/BenasB/bx2cloud/internal/api/gen;api";
+
+import "google/protobuf/timestamp.proto";
+
+service Api {
+    rpc Greet (GreetingRequest) returns (Greeting);
+}
+
+message GreetingRequest {}
+
+message Greeting {
+    string message = 1;
+    google.protobuf.Timestamp greetedAt = 2;
+}
