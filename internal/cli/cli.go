@@ -13,12 +13,13 @@ import (
 // TODO: use flags package
 
 func Run(args []string) exits.ExitCode {
-	if len(args) < 2 {
+	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Missing command\n")
 		return exits.MISSING_COMMAND
 	}
 
-	command := args[1]
+	command := args[0]
+	args = args[1:]
 
 	conn, err := newConn()
 	if err != nil {
@@ -31,7 +32,13 @@ func Run(args []string) exits.ExitCode {
 	var cmdErr error
 	switch command {
 	case "greet":
-		cmdErr, cmdErrCode = greet(pb.NewGreetServiceClient(conn)), exits.GREET_ERROR
+		client := pb.NewGreetServiceClient(conn)
+		cmdErrCode = exits.GREET_ERROR
+		if len(args) > 0 {
+			cmdErr = greetName(client, args[0])
+		} else {
+			cmdErr = greet(client)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unrecognized command '%s'\n", command)
 		return exits.UNKNOWN_COMMAND

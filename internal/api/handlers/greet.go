@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
@@ -16,9 +17,16 @@ func NewGreetService() *GreetService {
 	return &GreetService{}
 }
 
-func (s *GreetService) Greet(context.Context, *pb.GreetingRequest) (*pb.Greeting, error) {
+func (s *GreetService) Greet(ctx context.Context, req *pb.GreetingRequest) (*pb.Greeting, error) {
+	var message string
+	if req.Name != nil {
+		message = fmt.Sprintf("Hello from gRPC world to %s!", *req.Name)
+	} else {
+		message = "Hello gRPC world!"
+	}
+
 	response := &pb.Greeting{
-		Message:   "Hello gRPC world!",
+		Message:   message,
 		GreetedAt: timestamppb.New(time.Now()),
 	}
 

@@ -7,9 +7,12 @@ import "google/protobuf/timestamp.proto";
 
 service GreetService {
     rpc Greet (GreetingRequest) returns (Greeting);
+    rpc ShoutGreet (GreetingRequest) returns (Greeting);
 }
 
-message GreetingRequest {}
+message GreetingRequest {
+    optional string name = 1;
+}
 
 message Greeting {
     string message = 1;

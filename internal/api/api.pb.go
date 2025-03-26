@@ -24,6 +24,7 @@ const (
 
 type GreetingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -56,6 +57,13 @@ func (x *GreetingRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GreetingRequest.ProtoReflect.Descriptor instead.
 func (*GreetingRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GreetingRequest) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
 }
 
 type Greeting struct {
@@ -114,13 +122,17 @@ var File_api_proto protoreflect.FileDescriptor
 
 const file_api_proto_rawDesc = "" +
 	"\n" +
-	"\tapi.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\"\x11\n" +
-	"\x0fGreetingRequest\"^\n" +
+	"\tapi.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\"3\n" +
+	"\x0fGreetingRequest\x12\x17\n" +
+	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01B\a\n" +
+	"\x05_name\"^\n" +
 	"\bGreeting\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x128\n" +
-	"\tgreetedAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tgreetedAt2F\n" +
+	"\tgreetedAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tgreetedAt2\x83\x01\n" +
 	"\fGreetService\x126\n" +
-	"\x05Greet\x12\x19.bx2cloud.GreetingRequest\x1a\x12.bx2cloud.GreetingB1Z/github.com/BenasB/bx2cloud/internal/api/gen;apib\x06proto3"
+	"\x05Greet\x12\x19.bx2cloud.GreetingRequest\x1a\x12.bx2cloud.Greeting\x12;\n" +
+	"\n" +
+	"ShoutGreet\x12\x19.bx2cloud.GreetingRequest\x1a\x12.bx2cloud.GreetingB1Z/github.com/BenasB/bx2cloud/internal/api/gen;apib\x06proto3"
 
 var (
 	file_api_proto_rawDescOnce sync.Once
@@ -143,9 +155,11 @@ var file_api_proto_goTypes = []any{
 var file_api_proto_depIdxs = []int32{
 	2, // 0: bx2cloud.Greeting.greetedAt:type_name -> google.protobuf.Timestamp
 	0, // 1: bx2cloud.GreetService.Greet:input_type -> bx2cloud.GreetingRequest
-	1, // 2: bx2cloud.GreetService.Greet:output_type -> bx2cloud.Greeting
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	0, // 2: bx2cloud.GreetService.ShoutGreet:input_type -> bx2cloud.GreetingRequest
+	1, // 3: bx2cloud.GreetService.Greet:output_type -> bx2cloud.Greeting
+	1, // 4: bx2cloud.GreetService.ShoutGreet:output_type -> bx2cloud.Greeting
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -156,6 +170,7 @@ func file_api_proto_init() {
 	if File_api_proto != nil {
 		return
 	}
+	file_api_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
