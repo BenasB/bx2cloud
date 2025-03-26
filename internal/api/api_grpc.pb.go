@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.3
-// source: internal/api/api.proto
+// source: api.proto
 
 package api
 
@@ -19,103 +19,103 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Api_Greet_FullMethodName = "/bx2cloud.Api/Greet"
+	GreetService_Greet_FullMethodName = "/bx2cloud.GreetService/Greet"
 )
 
-// ApiClient is the client API for Api service.
+// GreetServiceClient is the client API for GreetService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ApiClient interface {
+type GreetServiceClient interface {
 	Greet(ctx context.Context, in *GreetingRequest, opts ...grpc.CallOption) (*Greeting, error)
 }
 
-type apiClient struct {
+type greetServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewApiClient(cc grpc.ClientConnInterface) ApiClient {
-	return &apiClient{cc}
+func NewGreetServiceClient(cc grpc.ClientConnInterface) GreetServiceClient {
+	return &greetServiceClient{cc}
 }
 
-func (c *apiClient) Greet(ctx context.Context, in *GreetingRequest, opts ...grpc.CallOption) (*Greeting, error) {
+func (c *greetServiceClient) Greet(ctx context.Context, in *GreetingRequest, opts ...grpc.CallOption) (*Greeting, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Greeting)
-	err := c.cc.Invoke(ctx, Api_Greet_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GreetService_Greet_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ApiServer is the server API for Api service.
-// All implementations must embed UnimplementedApiServer
+// GreetServiceServer is the server API for GreetService service.
+// All implementations must embed UnimplementedGreetServiceServer
 // for forward compatibility.
-type ApiServer interface {
+type GreetServiceServer interface {
 	Greet(context.Context, *GreetingRequest) (*Greeting, error)
-	mustEmbedUnimplementedApiServer()
+	mustEmbedUnimplementedGreetServiceServer()
 }
 
-// UnimplementedApiServer must be embedded to have
+// UnimplementedGreetServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedApiServer struct{}
+type UnimplementedGreetServiceServer struct{}
 
-func (UnimplementedApiServer) Greet(context.Context, *GreetingRequest) (*Greeting, error) {
+func (UnimplementedGreetServiceServer) Greet(context.Context, *GreetingRequest) (*Greeting, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Greet not implemented")
 }
-func (UnimplementedApiServer) mustEmbedUnimplementedApiServer() {}
-func (UnimplementedApiServer) testEmbeddedByValue()             {}
+func (UnimplementedGreetServiceServer) mustEmbedUnimplementedGreetServiceServer() {}
+func (UnimplementedGreetServiceServer) testEmbeddedByValue()                      {}
 
-// UnsafeApiServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ApiServer will
+// UnsafeGreetServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to GreetServiceServer will
 // result in compilation errors.
-type UnsafeApiServer interface {
-	mustEmbedUnimplementedApiServer()
+type UnsafeGreetServiceServer interface {
+	mustEmbedUnimplementedGreetServiceServer()
 }
 
-func RegisterApiServer(s grpc.ServiceRegistrar, srv ApiServer) {
-	// If the following call pancis, it indicates UnimplementedApiServer was
+func RegisterGreetServiceServer(s grpc.ServiceRegistrar, srv GreetServiceServer) {
+	// If the following call pancis, it indicates UnimplementedGreetServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&Api_ServiceDesc, srv)
+	s.RegisterService(&GreetService_ServiceDesc, srv)
 }
 
-func _Api_Greet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GreetService_Greet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GreetingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ApiServer).Greet(ctx, in)
+		return srv.(GreetServiceServer).Greet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Api_Greet_FullMethodName,
+		FullMethod: GreetService_Greet_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ApiServer).Greet(ctx, req.(*GreetingRequest))
+		return srv.(GreetServiceServer).Greet(ctx, req.(*GreetingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Api_ServiceDesc is the grpc.ServiceDesc for Api service.
+// GreetService_ServiceDesc is the grpc.ServiceDesc for GreetService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Api_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "bx2cloud.Api",
-	HandlerType: (*ApiServer)(nil),
+var GreetService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "bx2cloud.GreetService",
+	HandlerType: (*GreetServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Greet",
-			Handler:    _Api_Greet_Handler,
+			Handler:    _GreetService_Greet_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/api/api.proto",
+	Metadata: "api.proto",
 }

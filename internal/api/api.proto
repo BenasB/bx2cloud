@@ -5,7 +5,7 @@ option go_package = "github.com/BenasB/bx2cloud/internal/api/gen;api";
 
 import "google/protobuf/timestamp.proto";
 
-service Api {
+service GreetService {
     rpc Greet (GreetingRequest) returns (Greeting);
 }
 

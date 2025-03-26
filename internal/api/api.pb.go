@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v5.29.3
-// source: internal/api/api.proto
+// source: api.proto
 
 package api
 
@@ -30,7 +30,7 @@ type GreetingRequest struct {
 
 func (x *GreetingRequest) Reset() {
 	*x = GreetingRequest{}
-	mi := &file_internal_api_api_proto_msgTypes[0]
+	mi := &file_api_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *GreetingRequest) String() string {
 func (*GreetingRequest) ProtoMessage() {}
 
 func (x *GreetingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_api_proto_msgTypes[0]
+	mi := &file_api_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *GreetingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GreetingRequest.ProtoReflect.Descriptor instead.
 func (*GreetingRequest) Descriptor() ([]byte, []int) {
-	return file_internal_api_api_proto_rawDescGZIP(), []int{0}
+	return file_api_proto_rawDescGZIP(), []int{0}
 }
 
 type Greeting struct {
@@ -68,7 +68,7 @@ type Greeting struct {
 
 func (x *Greeting) Reset() {
 	*x = Greeting{}
-	mi := &file_internal_api_api_proto_msgTypes[1]
+	mi := &file_api_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -80,7 +80,7 @@ func (x *Greeting) String() string {
 func (*Greeting) ProtoMessage() {}
 
 func (x *Greeting) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_api_proto_msgTypes[1]
+	mi := &file_api_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -93,7 +93,7 @@ func (x *Greeting) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Greeting.ProtoReflect.Descriptor instead.
 func (*Greeting) Descriptor() ([]byte, []int) {
-	return file_internal_api_api_proto_rawDescGZIP(), []int{1}
+	return file_api_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Greeting) GetMessage() string {
@@ -110,40 +110,40 @@ func (x *Greeting) GetGreetedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-var File_internal_api_api_proto protoreflect.FileDescriptor
+var File_api_proto protoreflect.FileDescriptor
 
-const file_internal_api_api_proto_rawDesc = "" +
+const file_api_proto_rawDesc = "" +
 	"\n" +
-	"\x16internal/api/api.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\"\x11\n" +
+	"\tapi.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\"\x11\n" +
 	"\x0fGreetingRequest\"^\n" +
 	"\bGreeting\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x128\n" +
-	"\tgreetedAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tgreetedAt2=\n" +
-	"\x03Api\x126\n" +
+	"\tgreetedAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tgreetedAt2F\n" +
+	"\fGreetService\x126\n" +
 	"\x05Greet\x12\x19.bx2cloud.GreetingRequest\x1a\x12.bx2cloud.GreetingB1Z/github.com/BenasB/bx2cloud/internal/api/gen;apib\x06proto3"
 
 var (
-	file_internal_api_api_proto_rawDescOnce sync.Once
-	file_internal_api_api_proto_rawDescData []byte
+	file_api_proto_rawDescOnce sync.Once
+	file_api_proto_rawDescData []byte
 )
 
-func file_internal_api_api_proto_rawDescGZIP() []byte {
-	file_internal_api_api_proto_rawDescOnce.Do(func() {
-		file_internal_api_api_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_api_api_proto_rawDesc), len(file_internal_api_api_proto_rawDesc)))
+func file_api_proto_rawDescGZIP() []byte {
+	file_api_proto_rawDescOnce.Do(func() {
+		file_api_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_proto_rawDesc), len(file_api_proto_rawDesc)))
 	})
-	return file_internal_api_api_proto_rawDescData
+	return file_api_proto_rawDescData
 }
 
-var file_internal_api_api_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_internal_api_api_proto_goTypes = []any{
+var file_api_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_proto_goTypes = []any{
 	(*GreetingRequest)(nil),       // 0: bx2cloud.GreetingRequest
 	(*Greeting)(nil),              // 1: bx2cloud.Greeting
 	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
-var file_internal_api_api_proto_depIdxs = []int32{
+var file_api_proto_depIdxs = []int32{
 	2, // 0: bx2cloud.Greeting.greetedAt:type_name -> google.protobuf.Timestamp
-	0, // 1: bx2cloud.Api.Greet:input_type -> bx2cloud.GreetingRequest
-	1, // 2: bx2cloud.Api.Greet:output_type -> bx2cloud.Greeting
+	0, // 1: bx2cloud.GreetService.Greet:input_type -> bx2cloud.GreetingRequest
+	1, // 2: bx2cloud.GreetService.Greet:output_type -> bx2cloud.Greeting
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -151,26 +151,26 @@ var file_internal_api_api_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_internal_api_api_proto_init() }
-func file_internal_api_api_proto_init() {
-	if File_internal_api_api_proto != nil {
+func init() { file_api_proto_init() }
+func file_api_proto_init() {
+	if File_api_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_api_api_proto_rawDesc), len(file_internal_api_api_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_rawDesc), len(file_api_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_internal_api_api_proto_goTypes,
-		DependencyIndexes: file_internal_api_api_proto_depIdxs,
-		MessageInfos:      file_internal_api_api_proto_msgTypes,
+		GoTypes:           file_api_proto_goTypes,
+		DependencyIndexes: file_api_proto_depIdxs,
+		MessageInfos:      file_api_proto_msgTypes,
 	}.Build()
-	File_internal_api_api_proto = out.File
-	file_internal_api_api_proto_goTypes = nil
-	file_internal_api_api_proto_depIdxs = nil
+	File_api_proto = out.File
+	file_api_proto_goTypes = nil
+	file_api_proto_depIdxs = nil
 }

@@ -1,29 +1,13 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net"
-	"time"
 
-	"github.com/BenasB/bx2cloud/internal/api"
+	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/handlers"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-// TODO: package pb instead of api, move generated files
-type apiServer struct {
-	api.UnimplementedApiServer
-}
-
-func (s *apiServer) Greet(context.Context, *api.GreetingRequest) (*api.Greeting, error) {
-	response := &api.Greeting{
-		Message:   "Hello gRPC world!",
-		GreetedAt: timestamppb.New(time.Now()),
-	}
-
-	return response, nil
-}
 
 func main() {
 	lis, err := net.Listen("tcp", "localhost:8080")
@@ -32,7 +16,6 @@ func main() {
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	apiServer := &apiServer{} // TODO: Move out to newServer()
-	api.RegisterApiServer(grpcServer, apiServer)
+	pb.RegisterGreetServiceServer(grpcServer, handlers.NewGreetService())
 	grpcServer.Serve(lis)
 }
