@@ -4,17 +4,29 @@ package bx2cloud;
 option go_package = "github.com/BenasB/bx2cloud/internal/api/gen;api";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
-service GreetService {
-    rpc Greet (GreetingRequest) returns (Greeting);
-    rpc ShoutGreet (GreetingRequest) returns (Greeting);
+service VpcService {
+    rpc Get (VpcIdentificationRequest) returns (Vpc);
+    rpc Create (VpcCreationRequest) returns (Vpc);
+    rpc Delete (VpcIdentificationRequest) returns (google.protobuf.Empty);
 }
 
-message GreetingRequest {
-    optional string name = 1;
+message VpcIdentificationRequest {
+    oneof identification {
+        string id = 1;
+        string name = 2;
+    }
 }
 
-message Greeting {
-    string message = 1;
-    google.protobuf.Timestamp greetedAt = 2;
+message VpcCreationRequest {
+    string name = 1;
+    string cidr = 2;
+}
+
+message Vpc {
+    string id = 1;
+    string name = 2;
+    string cidr = 3;
+    google.protobuf.Timestamp createdAt = 4;
 }

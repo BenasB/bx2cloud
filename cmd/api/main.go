@@ -16,6 +16,6 @@ func main() {
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	pb.RegisterGreetServiceServer(grpcServer, handlers.NewGreetService())
+	pb.RegisterGreetServiceServer(grpcServer, handlers.NewVpcService())
 	grpcServer.Serve(lis)
 }

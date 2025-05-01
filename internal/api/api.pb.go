@@ -9,6 +9,7 @@ package api
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -22,27 +23,31 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type GreetingRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+type VpcIdentificationRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Identification:
+	//
+	//	*VpcIdentificationRequest_Id
+	//	*VpcIdentificationRequest_Name
+	Identification isVpcIdentificationRequest_Identification `protobuf_oneof:"identification"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
-func (x *GreetingRequest) Reset() {
-	*x = GreetingRequest{}
+func (x *VpcIdentificationRequest) Reset() {
+	*x = VpcIdentificationRequest{}
 	mi := &file_api_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GreetingRequest) String() string {
+func (x *VpcIdentificationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GreetingRequest) ProtoMessage() {}
+func (*VpcIdentificationRequest) ProtoMessage() {}
 
-func (x *GreetingRequest) ProtoReflect() protoreflect.Message {
+func (x *VpcIdentificationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -54,40 +59,74 @@ func (x *GreetingRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GreetingRequest.ProtoReflect.Descriptor instead.
-func (*GreetingRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use VpcIdentificationRequest.ProtoReflect.Descriptor instead.
+func (*VpcIdentificationRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GreetingRequest) GetName() string {
-	if x != nil && x.Name != nil {
-		return *x.Name
+func (x *VpcIdentificationRequest) GetIdentification() isVpcIdentificationRequest_Identification {
+	if x != nil {
+		return x.Identification
+	}
+	return nil
+}
+
+func (x *VpcIdentificationRequest) GetId() string {
+	if x != nil {
+		if x, ok := x.Identification.(*VpcIdentificationRequest_Id); ok {
+			return x.Id
+		}
 	}
 	return ""
 }
 
-type Greeting struct {
+func (x *VpcIdentificationRequest) GetName() string {
+	if x != nil {
+		if x, ok := x.Identification.(*VpcIdentificationRequest_Name); ok {
+			return x.Name
+		}
+	}
+	return ""
+}
+
+type isVpcIdentificationRequest_Identification interface {
+	isVpcIdentificationRequest_Identification()
+}
+
+type VpcIdentificationRequest_Id struct {
+	Id string `protobuf:"bytes,1,opt,name=id,proto3,oneof"`
+}
+
+type VpcIdentificationRequest_Name struct {
+	Name string `protobuf:"bytes,2,opt,name=name,proto3,oneof"`
+}
+
+func (*VpcIdentificationRequest_Id) isVpcIdentificationRequest_Identification() {}
+
+func (*VpcIdentificationRequest_Name) isVpcIdentificationRequest_Identification() {}
+
+type VpcCreationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	GreetedAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=greetedAt,proto3" json:"greetedAt,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Cidr          string                 `protobuf:"bytes,2,opt,name=cidr,proto3" json:"cidr,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Greeting) Reset() {
-	*x = Greeting{}
+func (x *VpcCreationRequest) Reset() {
+	*x = VpcCreationRequest{}
 	mi := &file_api_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Greeting) String() string {
+func (x *VpcCreationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Greeting) ProtoMessage() {}
+func (*VpcCreationRequest) ProtoMessage() {}
 
-func (x *Greeting) ProtoReflect() protoreflect.Message {
+func (x *VpcCreationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -99,21 +138,89 @@ func (x *Greeting) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Greeting.ProtoReflect.Descriptor instead.
-func (*Greeting) Descriptor() ([]byte, []int) {
+// Deprecated: Use VpcCreationRequest.ProtoReflect.Descriptor instead.
+func (*VpcCreationRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Greeting) GetMessage() string {
+func (x *VpcCreationRequest) GetName() string {
 	if x != nil {
-		return x.Message
+		return x.Name
 	}
 	return ""
 }
 
-func (x *Greeting) GetGreetedAt() *timestamppb.Timestamp {
+func (x *VpcCreationRequest) GetCidr() string {
 	if x != nil {
-		return x.GreetedAt
+		return x.Cidr
+	}
+	return ""
+}
+
+type Vpc struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Cidr          string                 `protobuf:"bytes,3,opt,name=cidr,proto3" json:"cidr,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Vpc) Reset() {
+	*x = Vpc{}
+	mi := &file_api_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Vpc) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Vpc) ProtoMessage() {}
+
+func (x *Vpc) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Vpc.ProtoReflect.Descriptor instead.
+func (*Vpc) Descriptor() ([]byte, []int) {
+	return file_api_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Vpc) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Vpc) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Vpc) GetCidr() string {
+	if x != nil {
+		return x.Cidr
+	}
+	return ""
+}
+
+func (x *Vpc) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
 	}
 	return nil
 }
@@ -122,17 +229,24 @@ var File_api_proto protoreflect.FileDescriptor
 
 const file_api_proto_rawDesc = "" +
 	"\n" +
-	"\tapi.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\"3\n" +
-	"\x0fGreetingRequest\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01B\a\n" +
-	"\x05_name\"^\n" +
-	"\bGreeting\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\x128\n" +
-	"\tgreetedAt\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tgreetedAt2\x83\x01\n" +
-	"\fGreetService\x126\n" +
-	"\x05Greet\x12\x19.bx2cloud.GreetingRequest\x1a\x12.bx2cloud.Greeting\x12;\n" +
+	"\tapi.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"T\n" +
+	"\x18VpcIdentificationRequest\x12\x10\n" +
+	"\x02id\x18\x01 \x01(\tH\x00R\x02id\x12\x14\n" +
+	"\x04name\x18\x02 \x01(\tH\x00R\x04nameB\x10\n" +
+	"\x0eidentification\"<\n" +
+	"\x12VpcCreationRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04cidr\x18\x02 \x01(\tR\x04cidr\"w\n" +
+	"\x03Vpc\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04cidr\x18\x03 \x01(\tR\x04cidr\x128\n" +
+	"\tcreatedAt\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt2\xc3\x01\n" +
 	"\n" +
-	"ShoutGreet\x12\x19.bx2cloud.GreetingRequest\x1a\x12.bx2cloud.GreetingB1Z/github.com/BenasB/bx2cloud/internal/api/gen;apib\x06proto3"
+	"VpcService\x128\n" +
+	"\x03Get\x12\".bx2cloud.VpcIdentificationRequest\x1a\r.bx2cloud.Vpc\x125\n" +
+	"\x06Create\x12\x1c.bx2cloud.VpcCreationRequest\x1a\r.bx2cloud.Vpc\x12D\n" +
+	"\x06Delete\x12\".bx2cloud.VpcIdentificationRequest\x1a\x16.google.protobuf.EmptyB1Z/github.com/BenasB/bx2cloud/internal/api/gen;apib\x06proto3"
 
 var (
 	file_api_proto_rawDescOnce sync.Once
@@ -146,20 +260,24 @@ func file_api_proto_rawDescGZIP() []byte {
 	return file_api_proto_rawDescData
 }
 
-var file_api_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_api_proto_goTypes = []any{
-	(*GreetingRequest)(nil),       // 0: bx2cloud.GreetingRequest
-	(*Greeting)(nil),              // 1: bx2cloud.Greeting
-	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*VpcIdentificationRequest)(nil), // 0: bx2cloud.VpcIdentificationRequest
+	(*VpcCreationRequest)(nil),       // 1: bx2cloud.VpcCreationRequest
+	(*Vpc)(nil),                      // 2: bx2cloud.Vpc
+	(*timestamppb.Timestamp)(nil),    // 3: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),            // 4: google.protobuf.Empty
 }
 var file_api_proto_depIdxs = []int32{
-	2, // 0: bx2cloud.Greeting.greetedAt:type_name -> google.protobuf.Timestamp
-	0, // 1: bx2cloud.GreetService.Greet:input_type -> bx2cloud.GreetingRequest
-	0, // 2: bx2cloud.GreetService.ShoutGreet:input_type -> bx2cloud.GreetingRequest
-	1, // 3: bx2cloud.GreetService.Greet:output_type -> bx2cloud.Greeting
-	1, // 4: bx2cloud.GreetService.ShoutGreet:output_type -> bx2cloud.Greeting
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
+	3, // 0: bx2cloud.Vpc.createdAt:type_name -> google.protobuf.Timestamp
+	0, // 1: bx2cloud.VpcService.Get:input_type -> bx2cloud.VpcIdentificationRequest
+	1, // 2: bx2cloud.VpcService.Create:input_type -> bx2cloud.VpcCreationRequest
+	0, // 3: bx2cloud.VpcService.Delete:input_type -> bx2cloud.VpcIdentificationRequest
+	2, // 4: bx2cloud.VpcService.Get:output_type -> bx2cloud.Vpc
+	2, // 5: bx2cloud.VpcService.Create:output_type -> bx2cloud.Vpc
+	4, // 6: bx2cloud.VpcService.Delete:output_type -> google.protobuf.Empty
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -170,14 +288,17 @@ func file_api_proto_init() {
 	if File_api_proto != nil {
 		return
 	}
-	file_api_proto_msgTypes[0].OneofWrappers = []any{}
+	file_api_proto_msgTypes[0].OneofWrappers = []any{
+		(*VpcIdentificationRequest_Id)(nil),
+		(*VpcIdentificationRequest_Name)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_rawDesc), len(file_api_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

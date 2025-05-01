@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,139 +20,177 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GreetService_Greet_FullMethodName      = "/bx2cloud.GreetService/Greet"
-	GreetService_ShoutGreet_FullMethodName = "/bx2cloud.GreetService/ShoutGreet"
+	VpcService_Get_FullMethodName    = "/bx2cloud.VpcService/Get"
+	VpcService_Create_FullMethodName = "/bx2cloud.VpcService/Create"
+	VpcService_Delete_FullMethodName = "/bx2cloud.VpcService/Delete"
 )
 
-// GreetServiceClient is the client API for GreetService service.
+// VpcServiceClient is the client API for VpcService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type GreetServiceClient interface {
-	Greet(ctx context.Context, in *GreetingRequest, opts ...grpc.CallOption) (*Greeting, error)
-	ShoutGreet(ctx context.Context, in *GreetingRequest, opts ...grpc.CallOption) (*Greeting, error)
+type VpcServiceClient interface {
+	Get(ctx context.Context, in *VpcIdentificationRequest, opts ...grpc.CallOption) (*Vpc, error)
+	Create(ctx context.Context, in *VpcCreationRequest, opts ...grpc.CallOption) (*Vpc, error)
+	Delete(ctx context.Context, in *VpcIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type greetServiceClient struct {
+type vpcServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewGreetServiceClient(cc grpc.ClientConnInterface) GreetServiceClient {
-	return &greetServiceClient{cc}
+func NewVpcServiceClient(cc grpc.ClientConnInterface) VpcServiceClient {
+	return &vpcServiceClient{cc}
 }
 
-func (c *greetServiceClient) Greet(ctx context.Context, in *GreetingRequest, opts ...grpc.CallOption) (*Greeting, error) {
+func (c *vpcServiceClient) Get(ctx context.Context, in *VpcIdentificationRequest, opts ...grpc.CallOption) (*Vpc, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Greeting)
-	err := c.cc.Invoke(ctx, GreetService_Greet_FullMethodName, in, out, cOpts...)
+	out := new(Vpc)
+	err := c.cc.Invoke(ctx, VpcService_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *greetServiceClient) ShoutGreet(ctx context.Context, in *GreetingRequest, opts ...grpc.CallOption) (*Greeting, error) {
+func (c *vpcServiceClient) Create(ctx context.Context, in *VpcCreationRequest, opts ...grpc.CallOption) (*Vpc, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Greeting)
-	err := c.cc.Invoke(ctx, GreetService_ShoutGreet_FullMethodName, in, out, cOpts...)
+	out := new(Vpc)
+	err := c.cc.Invoke(ctx, VpcService_Create_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// GreetServiceServer is the server API for GreetService service.
-// All implementations must embed UnimplementedGreetServiceServer
+func (c *vpcServiceClient) Delete(ctx context.Context, in *VpcIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, VpcService_Delete_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// VpcServiceServer is the server API for VpcService service.
+// All implementations must embed UnimplementedVpcServiceServer
 // for forward compatibility.
-type GreetServiceServer interface {
-	Greet(context.Context, *GreetingRequest) (*Greeting, error)
-	ShoutGreet(context.Context, *GreetingRequest) (*Greeting, error)
-	mustEmbedUnimplementedGreetServiceServer()
+type VpcServiceServer interface {
+	Get(context.Context, *VpcIdentificationRequest) (*Vpc, error)
+	Create(context.Context, *VpcCreationRequest) (*Vpc, error)
+	Delete(context.Context, *VpcIdentificationRequest) (*emptypb.Empty, error)
+	mustEmbedUnimplementedVpcServiceServer()
 }
 
-// UnimplementedGreetServiceServer must be embedded to have
+// UnimplementedVpcServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedGreetServiceServer struct{}
+type UnimplementedVpcServiceServer struct{}
 
-func (UnimplementedGreetServiceServer) Greet(context.Context, *GreetingRequest) (*Greeting, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Greet not implemented")
+func (UnimplementedVpcServiceServer) Get(context.Context, *VpcIdentificationRequest) (*Vpc, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedGreetServiceServer) ShoutGreet(context.Context, *GreetingRequest) (*Greeting, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShoutGreet not implemented")
+func (UnimplementedVpcServiceServer) Create(context.Context, *VpcCreationRequest) (*Vpc, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedGreetServiceServer) mustEmbedUnimplementedGreetServiceServer() {}
-func (UnimplementedGreetServiceServer) testEmbeddedByValue()                      {}
+func (UnimplementedVpcServiceServer) Delete(context.Context, *VpcIdentificationRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedVpcServiceServer) mustEmbedUnimplementedVpcServiceServer() {}
+func (UnimplementedVpcServiceServer) testEmbeddedByValue()                    {}
 
-// UnsafeGreetServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to GreetServiceServer will
+// UnsafeVpcServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to VpcServiceServer will
 // result in compilation errors.
-type UnsafeGreetServiceServer interface {
-	mustEmbedUnimplementedGreetServiceServer()
+type UnsafeVpcServiceServer interface {
+	mustEmbedUnimplementedVpcServiceServer()
 }
 
-func RegisterGreetServiceServer(s grpc.ServiceRegistrar, srv GreetServiceServer) {
-	// If the following call pancis, it indicates UnimplementedGreetServiceServer was
+func RegisterVpcServiceServer(s grpc.ServiceRegistrar, srv VpcServiceServer) {
+	// If the following call pancis, it indicates UnimplementedVpcServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&GreetService_ServiceDesc, srv)
+	s.RegisterService(&VpcService_ServiceDesc, srv)
 }
 
-func _GreetService_Greet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GreetingRequest)
+func _VpcService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VpcIdentificationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GreetServiceServer).Greet(ctx, in)
+		return srv.(VpcServiceServer).Get(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GreetService_Greet_FullMethodName,
+		FullMethod: VpcService_Get_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GreetServiceServer).Greet(ctx, req.(*GreetingRequest))
+		return srv.(VpcServiceServer).Get(ctx, req.(*VpcIdentificationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GreetService_ShoutGreet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GreetingRequest)
+func _VpcService_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VpcCreationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GreetServiceServer).ShoutGreet(ctx, in)
+		return srv.(VpcServiceServer).Create(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GreetService_ShoutGreet_FullMethodName,
+		FullMethod: VpcService_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GreetServiceServer).ShoutGreet(ctx, req.(*GreetingRequest))
+		return srv.(VpcServiceServer).Create(ctx, req.(*VpcCreationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// GreetService_ServiceDesc is the grpc.ServiceDesc for GreetService service.
+func _VpcService_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VpcIdentificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VpcServiceServer).Delete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VpcService_Delete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VpcServiceServer).Delete(ctx, req.(*VpcIdentificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// VpcService_ServiceDesc is the grpc.ServiceDesc for VpcService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var GreetService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "bx2cloud.GreetService",
-	HandlerType: (*GreetServiceServer)(nil),
+var VpcService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "bx2cloud.VpcService",
+	HandlerType: (*VpcServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Greet",
-			Handler:    _GreetService_Greet_Handler,
+			MethodName: "Get",
+			Handler:    _VpcService_Get_Handler,
 		},
 		{
-			MethodName: "ShoutGreet",
-			Handler:    _GreetService_ShoutGreet_Handler,
+			MethodName: "Create",
+			Handler:    _VpcService_Create_Handler,
+		},
+		{
+			MethodName: "Delete",
+			Handler:    _VpcService_Delete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
