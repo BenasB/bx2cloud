@@ -8,6 +8,7 @@ import "google/protobuf/empty.proto";
 
 service VpcService {
     rpc Get (VpcIdentificationRequest) returns (Vpc);
+    rpc List (google.protobuf.Empty) returns (stream Vpc);
     rpc Create (VpcCreationRequest) returns (Vpc);
     rpc Delete (VpcIdentificationRequest) returns (google.protobuf.Empty);
 }

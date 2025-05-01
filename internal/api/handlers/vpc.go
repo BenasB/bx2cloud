@@ -7,6 +7,8 @@ import (
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -18,7 +20,10 @@ type VpcService struct {
 
 func NewVpcService(vpcs []*pb.Vpc) *VpcService {
 	serviceVpcs := make([]*pb.Vpc, len(vpcs))
-	copy(serviceVpcs, vpcs)
+	for i, vpc := range vpcs {
+		serviceVpcs[i] = proto.Clone(vpc).(*pb.Vpc)
+	}
+
 	return &VpcService{
 		vpcs: serviceVpcs,
 	}
@@ -74,4 +79,13 @@ func (s *VpcService) Create(ctx context.Context, req *pb.VpcCreationRequest) (*p
 	s.vpcs = append(s.vpcs, newVpc)
 
 	return newVpc, nil
+}
+
+func (s *VpcService) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Vpc]) error {
+	for _, vpc := range s.vpcs {
+		if err := stream.Send(vpc); err != nil {
+			return err
+		}
+	}
+	return nil
 }

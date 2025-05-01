@@ -3,28 +3,28 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func greet(client pb.GreetServiceClient) error {
-	resp, err := client.Greet(context.Background(), &pb.GreetingRequest{})
+func vpcList(client pb.VpcServiceClient) error {
+	stream, err := client.List(context.Background(), &emptypb.Empty{})
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(resp)
-
-	return nil
-}
-
-func greetName(client pb.GreetServiceClient, name string) error {
-	resp, err := client.Greet(context.Background(), &pb.GreetingRequest{Name: &name})
-	if err != nil {
-		return err
+	for {
+		vpc, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Println(vpc)
 	}
-
-	fmt.Println(resp)
 
 	return nil
 }

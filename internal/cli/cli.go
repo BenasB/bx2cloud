@@ -31,13 +31,24 @@ func Run(args []string) exits.ExitCode {
 	var cmdErrCode exits.ExitCode
 	var cmdErr error
 	switch command {
-	case "greet":
-		client := pb.NewGreetServiceClient(conn)
-		cmdErrCode = exits.GREET_ERROR
-		if len(args) > 0 {
-			cmdErr = greetName(client, args[0])
-		} else {
-			cmdErr = greet(client)
+	case "vpc":
+		if len(args) == 0 {
+			fmt.Fprintf(os.Stderr, "Missing subcommand\n")
+			return exits.MISSING_SUBCOMMAND
+		}
+		subcommand := args[0]
+		args = args[1:]
+
+		client := pb.NewVpcServiceClient(conn)
+		cmdErrCode = exits.VPC_ERROR
+
+		switch subcommand {
+		case "list":
+			cmdErr = vpcList(client)
+		// TODO: other subcommands
+		default:
+			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
+			return exits.UNKNOWN_SUBCOMMAND
 		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unrecognized command '%s'\n", command)
