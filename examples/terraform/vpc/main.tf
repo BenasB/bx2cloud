@@ -10,10 +10,7 @@ provider "bx2cloud" {
   host = "localhost:8080"
 }
 
-data "bx2cloud_vpc" "first" {
-  id = "abc-f12"
-}
-
-output "test_output" {
-  value = data.bx2cloud_vpc.first
+resource "bx2cloud_vpc" "my-vpc" {
+  name = "my-tf-vpc"
+  cidr = "10.0.4.0/24"
 }
