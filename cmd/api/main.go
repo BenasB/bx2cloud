@@ -12,7 +12,8 @@ import (
 )
 
 func main() {
-	lis, err := net.Listen("tcp", "localhost:8080")
+	address := "localhost:8080"
+	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -35,5 +36,8 @@ func main() {
 	}
 	pb.RegisterVpcServiceServer(grpcServer, handlers.NewVpcService(sampleVpcs))
 
-	grpcServer.Serve(lis)
+	log.Printf("Starting server on %s\n", address)
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

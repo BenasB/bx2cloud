@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
@@ -23,7 +24,7 @@ func Run(args []string) exits.ExitCode {
 
 	conn, err := newConn()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exits.SERVER_ERROR
 	}
 	defer conn.Close()
@@ -45,7 +46,32 @@ func Run(args []string) exits.ExitCode {
 		switch subcommand {
 		case "list":
 			cmdErr = vpcList(client)
-		// TODO: other subcommands
+		case "get":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing identifier argument (id or name)\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			identifier := args[0]
+			args = args[1:]
+			cmdErr = vpcGet(client, identifier)
+		case "delete":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing identifier argument (id or name)\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			identifier := args[0]
+			args = args[1:]
+			cmdErr = vpcDelete(client, identifier)
+		case "create":
+			yamlBytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				cmdErr = err
+				break
+			}
+
+			cmdErr = vpcCreate(client, yamlBytes)
 		default:
 			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
 			return exits.UNKNOWN_SUBCOMMAND
@@ -56,7 +82,7 @@ func Run(args []string) exits.ExitCode {
 	}
 
 	if cmdErr != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", cmdErr)
+		fmt.Fprintf(os.Stderr, "%v\n", cmdErr)
 		return cmdErrCode
 	}
 
