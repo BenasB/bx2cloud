@@ -6,28 +6,46 @@ option go_package = "github.com/BenasB/bx2cloud/internal/api/gen;api";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-service VpcService {
-    rpc Get (VpcIdentificationRequest) returns (Vpc);
-    rpc List (google.protobuf.Empty) returns (stream Vpc);
-    rpc Create (VpcCreationRequest) returns (Vpc);
-    rpc Delete (VpcIdentificationRequest) returns (google.protobuf.Empty);
+service SubnetworkService {
+    rpc Get (SubnetworkIdentificationRequest) returns (Subnetwork);
+    rpc List (google.protobuf.Empty) returns (stream Subnetwork);
+    rpc Create (SubnetworkCreationRequest) returns (Subnetwork);
+    rpc Delete (SubnetworkIdentificationRequest) returns (google.protobuf.Empty);
 }
 
-message VpcIdentificationRequest {
-    oneof identification {
-        string id = 1;
-        string name = 2;
-    }
+message SubnetworkIdentificationRequest {
+    uint32 id = 1;
 }
 
-message VpcCreationRequest {
-    string name = 1;
-    string cidr = 2;
+message SubnetworkCreationRequest {
+    fixed32 address = 1;
+    fixed32 prefix_length = 2;
 }
 
-message Vpc {
-    string id = 1;
-    string name = 2;
-    string cidr = 3;
+message Subnetwork {
+    uint32 id = 1;
+    fixed32 address = 2;
+    fixed32 prefix_length = 3;
+    google.protobuf.Timestamp createdAt = 4;
+}
+
+service NetworkService {
+    rpc Get (NetworkIdentificationRequest) returns (Network);
+    rpc List (google.protobuf.Empty) returns (stream Network);
+    rpc Create (NetworkCreationRequest) returns (Network);
+    rpc Delete (NetworkIdentificationRequest) returns (google.protobuf.Empty);
+}
+
+message NetworkIdentificationRequest {
+    uint32 id = 1;
+}
+
+message NetworkCreationRequest {
+    bool internet_access = 1;
+}
+
+message Network {
+    uint32 id = 1;
+    bool internet_access = 2;
     google.protobuf.Timestamp createdAt = 4;
 }

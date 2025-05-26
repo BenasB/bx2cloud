@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"text/tabwriter"
 
@@ -13,70 +14,85 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func newVpcWriter() *tabwriter.Writer {
+func newNetworkWriter() *tabwriter.Writer {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "id\tname\tcidr\n")
+	fmt.Fprintf(w, "id\tinternetAccess\n")
 	return w
 }
 
-func printVpc(w *tabwriter.Writer, vpc *pb.Vpc) {
-	fmt.Fprintf(w, "%s\t%s\t%s\n", vpc.Id, vpc.Name, vpc.Cidr)
+func printNetwork(w *tabwriter.Writer, network *pb.Network) {
+	fmt.Fprintf(w, "%d\t%t\n", network.Id, network.InternetAccess)
 }
 
-func vpcList(client pb.VpcServiceClient) error {
+func newSubnetworkWriter() *tabwriter.Writer {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "id\tcidr\n")
+	return w
+}
+
+func printSubnetwork(w *tabwriter.Writer, subnetwork *pb.Subnetwork) {
+	cidr := fmt.Sprintf("%d.%d.%d.%d/%d",
+		byte(subnetwork.Address>>24),
+		byte(subnetwork.Address>>16),
+		byte(subnetwork.Address>>8),
+		byte(subnetwork.Address),
+		subnetwork.PrefixLength)
+
+	fmt.Fprintf(w, "%d\t%s\n", subnetwork.Id, cidr)
+}
+
+func networkList(client pb.NetworkServiceClient) error {
 	stream, err := client.List(context.Background(), &emptypb.Empty{})
 	if err != nil {
 		return err
 	}
 
-	w := newVpcWriter()
+	w := newNetworkWriter()
 	defer w.Flush()
 	for {
-		vpc, err := stream.Recv()
+		network, err := stream.Recv()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return err
 		}
-		printVpc(w, vpc)
+		printNetwork(w, network)
 	}
 
 	return nil
 }
 
-func vpcGet(client pb.VpcServiceClient, identifier string) error {
-	delete := func(ctx context.Context, req *pb.VpcIdentificationRequest) (*pb.Vpc, error) {
-		return client.Get(ctx, req)
-	}
-	vpc, err := requestVpcByIdentifier(identifier, delete)
+func networkGet(client pb.NetworkServiceClient, id uint32) error {
+	network, err := client.Get(context.Background(), &pb.NetworkIdentificationRequest{
+		Id: id,
+	})
 	if err != nil {
 		return err
 	}
 
-	w := newVpcWriter()
+	w := newNetworkWriter()
 	defer w.Flush()
-	printVpc(w, vpc)
+	printNetwork(w, network)
 
 	return nil
 }
 
-func vpcDelete(client pb.VpcServiceClient, identifier string) error {
-	delete := func(ctx context.Context, req *pb.VpcIdentificationRequest) (*emptypb.Empty, error) {
-		return client.Delete(ctx, req)
-	}
-	_, err := requestVpcByIdentifier[*emptypb.Empty](identifier, delete)
+func networkDelete(client pb.NetworkServiceClient, id uint32) error {
+	_, err := client.Delete(context.Background(), &pb.NetworkIdentificationRequest{
+		Id: id,
+	})
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Successfully deleted %s\n", identifier)
+	fmt.Printf("Successfully deleted %d\n", id)
 
 	return nil
 }
 
-func vpcCreate(client pb.VpcServiceClient, yamlBytes []byte) error {
-	input := &inputs.VpcCreation{}
+func networkCreate(client pb.NetworkServiceClient, yamlBytes []byte) error {
+	input := &inputs.NetworkCreation{}
 	if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
 		return err
 	}
@@ -85,9 +101,8 @@ func vpcCreate(client pb.VpcServiceClient, yamlBytes []byte) error {
 		return err
 	}
 
-	req := &pb.VpcCreationRequest{
-		Name: input.Name,
-		Cidr: input.Cidr,
+	req := &pb.NetworkCreationRequest{
+		InternetAccess: input.InternetAccess,
 	}
 
 	resp, err := client.Create(context.Background(), req)
@@ -95,57 +110,94 @@ func vpcCreate(client pb.VpcServiceClient, yamlBytes []byte) error {
 		return err
 	}
 
-	fmt.Printf("Successfully created %s\n", resp.Id)
+	fmt.Printf("Successfully created %d\n", resp.Id)
 
 	return nil
 }
 
-func requestVpcByIdentifier[T any](identifier string, rpc func(context.Context, *pb.VpcIdentificationRequest) (T, error)) (T, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	type result struct {
-		resp T
-		err  error
+func subnetworkList(client pb.SubnetworkServiceClient) error {
+	stream, err := client.List(context.Background(), &emptypb.Empty{})
+	if err != nil {
+		return err
 	}
 
-	idResult := make(chan result, 1)
-	nameResult := make(chan result, 1)
-
-	idRequest := pb.VpcIdentificationRequest{
-		Identification: &pb.VpcIdentificationRequest_Id{Id: identifier},
-	}
-
-	nameRequest := pb.VpcIdentificationRequest{
-		Identification: &pb.VpcIdentificationRequest_Name{Name: identifier},
-	}
-
-	go func() {
-		resp, err := rpc(ctx, &idRequest)
-		idResult <- result{resp, err}
-	}()
-
-	go func() {
-		resp, err := rpc(ctx, &nameRequest)
-		nameResult <- result{resp, err}
-	}()
-
-	var lastErr error
-	for i := 0; i < 2; i++ {
-		select {
-		case result := <-idResult:
-			if result.err == nil {
-				return result.resp, nil
-			}
-			lastErr = result.err
-		case result := <-nameResult:
-			if result.err == nil {
-				return result.resp, nil
-			}
-			lastErr = result.err
+	w := newSubnetworkWriter()
+	defer w.Flush()
+	for {
+		subnetwork, err := stream.Recv()
+		if err == io.EOF {
+			break
 		}
+		if err != nil {
+			return err
+		}
+		printSubnetwork(w, subnetwork)
 	}
 
-	var zero T
-	return zero, lastErr
+	return nil
+}
+
+func subnetworkGet(client pb.SubnetworkServiceClient, id uint32) error {
+	subnetwork, err := client.Get(context.Background(), &pb.SubnetworkIdentificationRequest{
+		Id: id,
+	})
+	if err != nil {
+		return err
+	}
+
+	w := newSubnetworkWriter()
+	defer w.Flush()
+	printSubnetwork(w, subnetwork)
+
+	return nil
+}
+
+func subnetworkDelete(client pb.SubnetworkServiceClient, id uint32) error {
+	_, err := client.Delete(context.Background(), &pb.SubnetworkIdentificationRequest{
+		Id: id,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully deleted %d\n", id)
+
+	return nil
+}
+
+func subnetworkCreate(client pb.SubnetworkServiceClient, yamlBytes []byte) error {
+	input := &inputs.SubnetworkCreation{}
+	if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
+		return err
+	}
+
+	if err := input.Validate(); err != nil {
+		return err
+	}
+
+	_, ipNet, err := net.ParseCIDR(input.Cidr)
+	if err != nil {
+		return fmt.Errorf("Could not parse CIDR: %v", err)
+	}
+
+	ip := ipNet.IP.To4()
+	if ip == nil {
+		return fmt.Errorf("Could not convert the ip to an IPv4 ip")
+	}
+	address := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
+	prefixLength, _ := ipNet.Mask.Size()
+
+	req := &pb.SubnetworkCreationRequest{
+		Address:      address,
+		PrefixLength: uint32(prefixLength),
+	}
+
+	resp, err := client.Create(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully created %d\n", resp.Id)
+
+	return nil
 }

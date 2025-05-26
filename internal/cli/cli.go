@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/cli/exits"
@@ -32,7 +33,7 @@ func Run(args []string) exits.ExitCode {
 	var cmdErrCode exits.ExitCode
 	var cmdErr error
 	switch command {
-	case "vpc":
+	case "network":
 		if len(args) == 0 {
 			fmt.Fprintf(os.Stderr, "Missing subcommand\n")
 			return exits.MISSING_SUBCOMMAND
@@ -40,30 +41,42 @@ func Run(args []string) exits.ExitCode {
 		subcommand := args[0]
 		args = args[1:]
 
-		client := pb.NewVpcServiceClient(conn)
-		cmdErrCode = exits.VPC_ERROR
+		client := pb.NewNetworkServiceClient(conn)
+		cmdErrCode = exits.NETWORK_ERROR
 
 		switch subcommand {
 		case "list":
-			cmdErr = vpcList(client)
+			cmdErr = networkList(client)
 		case "get":
 			if len(args) == 0 {
-				fmt.Fprintf(os.Stderr, "Missing identifier argument (id or name)\n")
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
 				return exits.MISSING_ARGUMENT
 			}
 
-			identifier := args[0]
+			idString := args[0]
 			args = args[1:]
-			cmdErr = vpcGet(client, identifier)
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = networkGet(client, uint32(id))
 		case "delete":
 			if len(args) == 0 {
-				fmt.Fprintf(os.Stderr, "Missing identifier argument (id or name)\n")
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
 				return exits.MISSING_ARGUMENT
 			}
 
-			identifier := args[0]
+			idString := args[0]
 			args = args[1:]
-			cmdErr = vpcDelete(client, identifier)
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = networkDelete(client, uint32(id))
 		case "create":
 			yamlBytes, err := io.ReadAll(os.Stdin)
 			if err != nil {
@@ -71,7 +84,63 @@ func Run(args []string) exits.ExitCode {
 				break
 			}
 
-			cmdErr = vpcCreate(client, yamlBytes)
+			cmdErr = networkCreate(client, yamlBytes)
+		default:
+			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
+			return exits.UNKNOWN_SUBCOMMAND
+		}
+	case "subnetwork":
+		if len(args) == 0 {
+			fmt.Fprintf(os.Stderr, "Missing subcommand\n")
+			return exits.MISSING_SUBCOMMAND
+		}
+		subcommand := args[0]
+		args = args[1:]
+
+		client := pb.NewSubnetworkServiceClient(conn)
+		cmdErrCode = exits.SUBNETWORK_ERROR
+
+		switch subcommand {
+		case "list":
+			cmdErr = subnetworkList(client)
+		case "get":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = subnetworkGet(client, uint32(id))
+		case "delete":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = subnetworkDelete(client, uint32(id))
+		case "create":
+			yamlBytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				cmdErr = err
+				break
+			}
+
+			cmdErr = subnetworkCreate(client, yamlBytes)
 		default:
 			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
 			return exits.UNKNOWN_SUBCOMMAND

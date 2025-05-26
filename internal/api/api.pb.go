@@ -23,110 +23,72 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type VpcIdentificationRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Identification:
-	//
-	//	*VpcIdentificationRequest_Id
-	//	*VpcIdentificationRequest_Name
-	Identification isVpcIdentificationRequest_Identification `protobuf_oneof:"identification"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *VpcIdentificationRequest) Reset() {
-	*x = VpcIdentificationRequest{}
-	mi := &file_api_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *VpcIdentificationRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*VpcIdentificationRequest) ProtoMessage() {}
-
-func (x *VpcIdentificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use VpcIdentificationRequest.ProtoReflect.Descriptor instead.
-func (*VpcIdentificationRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *VpcIdentificationRequest) GetIdentification() isVpcIdentificationRequest_Identification {
-	if x != nil {
-		return x.Identification
-	}
-	return nil
-}
-
-func (x *VpcIdentificationRequest) GetId() string {
-	if x != nil {
-		if x, ok := x.Identification.(*VpcIdentificationRequest_Id); ok {
-			return x.Id
-		}
-	}
-	return ""
-}
-
-func (x *VpcIdentificationRequest) GetName() string {
-	if x != nil {
-		if x, ok := x.Identification.(*VpcIdentificationRequest_Name); ok {
-			return x.Name
-		}
-	}
-	return ""
-}
-
-type isVpcIdentificationRequest_Identification interface {
-	isVpcIdentificationRequest_Identification()
-}
-
-type VpcIdentificationRequest_Id struct {
-	Id string `protobuf:"bytes,1,opt,name=id,proto3,oneof"`
-}
-
-type VpcIdentificationRequest_Name struct {
-	Name string `protobuf:"bytes,2,opt,name=name,proto3,oneof"`
-}
-
-func (*VpcIdentificationRequest_Id) isVpcIdentificationRequest_Identification() {}
-
-func (*VpcIdentificationRequest_Name) isVpcIdentificationRequest_Identification() {}
-
-type VpcCreationRequest struct {
+type SubnetworkIdentificationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Cidr          string                 `protobuf:"bytes,2,opt,name=cidr,proto3" json:"cidr,omitempty"`
+	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *VpcCreationRequest) Reset() {
-	*x = VpcCreationRequest{}
+func (x *SubnetworkIdentificationRequest) Reset() {
+	*x = SubnetworkIdentificationRequest{}
+	mi := &file_api_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubnetworkIdentificationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubnetworkIdentificationRequest) ProtoMessage() {}
+
+func (x *SubnetworkIdentificationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubnetworkIdentificationRequest.ProtoReflect.Descriptor instead.
+func (*SubnetworkIdentificationRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *SubnetworkIdentificationRequest) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type SubnetworkCreationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       uint32                 `protobuf:"fixed32,1,opt,name=address,proto3" json:"address,omitempty"`
+	PrefixLength  uint32                 `protobuf:"fixed32,2,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubnetworkCreationRequest) Reset() {
+	*x = SubnetworkCreationRequest{}
 	mi := &file_api_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *VpcCreationRequest) String() string {
+func (x *SubnetworkCreationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*VpcCreationRequest) ProtoMessage() {}
+func (*SubnetworkCreationRequest) ProtoMessage() {}
 
-func (x *VpcCreationRequest) ProtoReflect() protoreflect.Message {
+func (x *SubnetworkCreationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -138,49 +100,49 @@ func (x *VpcCreationRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use VpcCreationRequest.ProtoReflect.Descriptor instead.
-func (*VpcCreationRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use SubnetworkCreationRequest.ProtoReflect.Descriptor instead.
+func (*SubnetworkCreationRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *VpcCreationRequest) GetName() string {
+func (x *SubnetworkCreationRequest) GetAddress() uint32 {
 	if x != nil {
-		return x.Name
+		return x.Address
 	}
-	return ""
+	return 0
 }
 
-func (x *VpcCreationRequest) GetCidr() string {
+func (x *SubnetworkCreationRequest) GetPrefixLength() uint32 {
 	if x != nil {
-		return x.Cidr
+		return x.PrefixLength
 	}
-	return ""
+	return 0
 }
 
-type Vpc struct {
+type Subnetwork struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Cidr          string                 `protobuf:"bytes,3,opt,name=cidr,proto3" json:"cidr,omitempty"`
+	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Address       uint32                 `protobuf:"fixed32,2,opt,name=address,proto3" json:"address,omitempty"`
+	PrefixLength  uint32                 `protobuf:"fixed32,3,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Vpc) Reset() {
-	*x = Vpc{}
+func (x *Subnetwork) Reset() {
+	*x = Subnetwork{}
 	mi := &file_api_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Vpc) String() string {
+func (x *Subnetwork) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Vpc) ProtoMessage() {}
+func (*Subnetwork) ProtoMessage() {}
 
-func (x *Vpc) ProtoReflect() protoreflect.Message {
+func (x *Subnetwork) ProtoReflect() protoreflect.Message {
 	mi := &file_api_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -192,33 +154,181 @@ func (x *Vpc) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Vpc.ProtoReflect.Descriptor instead.
-func (*Vpc) Descriptor() ([]byte, []int) {
+// Deprecated: Use Subnetwork.ProtoReflect.Descriptor instead.
+func (*Subnetwork) Descriptor() ([]byte, []int) {
 	return file_api_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *Vpc) GetId() string {
+func (x *Subnetwork) GetId() uint32 {
 	if x != nil {
 		return x.Id
 	}
-	return ""
+	return 0
 }
 
-func (x *Vpc) GetName() string {
+func (x *Subnetwork) GetAddress() uint32 {
 	if x != nil {
-		return x.Name
+		return x.Address
 	}
-	return ""
+	return 0
 }
 
-func (x *Vpc) GetCidr() string {
+func (x *Subnetwork) GetPrefixLength() uint32 {
 	if x != nil {
-		return x.Cidr
+		return x.PrefixLength
 	}
-	return ""
+	return 0
 }
 
-func (x *Vpc) GetCreatedAt() *timestamppb.Timestamp {
+func (x *Subnetwork) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type NetworkIdentificationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkIdentificationRequest) Reset() {
+	*x = NetworkIdentificationRequest{}
+	mi := &file_api_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkIdentificationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkIdentificationRequest) ProtoMessage() {}
+
+func (x *NetworkIdentificationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkIdentificationRequest.ProtoReflect.Descriptor instead.
+func (*NetworkIdentificationRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *NetworkIdentificationRequest) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type NetworkCreationRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	InternetAccess bool                   `protobuf:"varint,1,opt,name=internet_access,json=internetAccess,proto3" json:"internet_access,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *NetworkCreationRequest) Reset() {
+	*x = NetworkCreationRequest{}
+	mi := &file_api_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkCreationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkCreationRequest) ProtoMessage() {}
+
+func (x *NetworkCreationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkCreationRequest.ProtoReflect.Descriptor instead.
+func (*NetworkCreationRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *NetworkCreationRequest) GetInternetAccess() bool {
+	if x != nil {
+		return x.InternetAccess
+	}
+	return false
+}
+
+type Network struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	InternetAccess bool                   `protobuf:"varint,2,opt,name=internet_access,json=internetAccess,proto3" json:"internet_access,omitempty"`
+	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *Network) Reset() {
+	*x = Network{}
+	mi := &file_api_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Network) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Network) ProtoMessage() {}
+
+func (x *Network) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Network.ProtoReflect.Descriptor instead.
+func (*Network) Descriptor() ([]byte, []int) {
+	return file_api_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Network) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *Network) GetInternetAccess() bool {
+	if x != nil {
+		return x.InternetAccess
+	}
+	return false
+}
+
+func (x *Network) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
 	}
@@ -229,25 +339,36 @@ var File_api_proto protoreflect.FileDescriptor
 
 const file_api_proto_rawDesc = "" +
 	"\n" +
-	"\tapi.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"T\n" +
-	"\x18VpcIdentificationRequest\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\tH\x00R\x02id\x12\x14\n" +
-	"\x04name\x18\x02 \x01(\tH\x00R\x04nameB\x10\n" +
-	"\x0eidentification\"<\n" +
-	"\x12VpcCreationRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04cidr\x18\x02 \x01(\tR\x04cidr\"w\n" +
-	"\x03Vpc\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04cidr\x18\x03 \x01(\tR\x04cidr\x128\n" +
-	"\tcreatedAt\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt2\xf4\x01\n" +
+	"\tapi.proto\x12\bbx2cloud\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"1\n" +
+	"\x1fSubnetworkIdentificationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\"Z\n" +
+	"\x19SubnetworkCreationRequest\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\aR\aaddress\x12#\n" +
+	"\rprefix_length\x18\x02 \x01(\aR\fprefixLength\"\x95\x01\n" +
 	"\n" +
-	"VpcService\x128\n" +
-	"\x03Get\x12\".bx2cloud.VpcIdentificationRequest\x1a\r.bx2cloud.Vpc\x12/\n" +
-	"\x04List\x12\x16.google.protobuf.Empty\x1a\r.bx2cloud.Vpc0\x01\x125\n" +
-	"\x06Create\x12\x1c.bx2cloud.VpcCreationRequest\x1a\r.bx2cloud.Vpc\x12D\n" +
-	"\x06Delete\x12\".bx2cloud.VpcIdentificationRequest\x1a\x16.google.protobuf.EmptyB1Z/github.com/BenasB/bx2cloud/internal/api/gen;apib\x06proto3"
+	"Subnetwork\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
+	"\rprefix_length\x18\x03 \x01(\aR\fprefixLength\x128\n" +
+	"\tcreatedAt\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\".\n" +
+	"\x1cNetworkIdentificationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\"A\n" +
+	"\x16NetworkCreationRequest\x12'\n" +
+	"\x0finternet_access\x18\x01 \x01(\bR\x0einternetAccess\"|\n" +
+	"\aNetwork\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\x12'\n" +
+	"\x0finternet_access\x18\x02 \x01(\bR\x0einternetAccess\x128\n" +
+	"\tcreatedAt\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt2\xa5\x02\n" +
+	"\x11SubnetworkService\x12F\n" +
+	"\x03Get\x12).bx2cloud.SubnetworkIdentificationRequest\x1a\x14.bx2cloud.Subnetwork\x126\n" +
+	"\x04List\x12\x16.google.protobuf.Empty\x1a\x14.bx2cloud.Subnetwork0\x01\x12C\n" +
+	"\x06Create\x12#.bx2cloud.SubnetworkCreationRequest\x1a\x14.bx2cloud.Subnetwork\x12K\n" +
+	"\x06Delete\x12).bx2cloud.SubnetworkIdentificationRequest\x1a\x16.google.protobuf.Empty2\x90\x02\n" +
+	"\x0eNetworkService\x12@\n" +
+	"\x03Get\x12&.bx2cloud.NetworkIdentificationRequest\x1a\x11.bx2cloud.Network\x123\n" +
+	"\x04List\x12\x16.google.protobuf.Empty\x1a\x11.bx2cloud.Network0\x01\x12=\n" +
+	"\x06Create\x12 .bx2cloud.NetworkCreationRequest\x1a\x11.bx2cloud.Network\x12H\n" +
+	"\x06Delete\x12&.bx2cloud.NetworkIdentificationRequest\x1a\x16.google.protobuf.EmptyB1Z/github.com/BenasB/bx2cloud/internal/api/gen;apib\x06proto3"
 
 var (
 	file_api_proto_rawDescOnce sync.Once
@@ -261,29 +382,41 @@ func file_api_proto_rawDescGZIP() []byte {
 	return file_api_proto_rawDescData
 }
 
-var file_api_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_api_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_api_proto_goTypes = []any{
-	(*VpcIdentificationRequest)(nil), // 0: bx2cloud.VpcIdentificationRequest
-	(*VpcCreationRequest)(nil),       // 1: bx2cloud.VpcCreationRequest
-	(*Vpc)(nil),                      // 2: bx2cloud.Vpc
-	(*timestamppb.Timestamp)(nil),    // 3: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),            // 4: google.protobuf.Empty
+	(*SubnetworkIdentificationRequest)(nil), // 0: bx2cloud.SubnetworkIdentificationRequest
+	(*SubnetworkCreationRequest)(nil),       // 1: bx2cloud.SubnetworkCreationRequest
+	(*Subnetwork)(nil),                      // 2: bx2cloud.Subnetwork
+	(*NetworkIdentificationRequest)(nil),    // 3: bx2cloud.NetworkIdentificationRequest
+	(*NetworkCreationRequest)(nil),          // 4: bx2cloud.NetworkCreationRequest
+	(*Network)(nil),                         // 5: bx2cloud.Network
+	(*timestamppb.Timestamp)(nil),           // 6: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                   // 7: google.protobuf.Empty
 }
 var file_api_proto_depIdxs = []int32{
-	3, // 0: bx2cloud.Vpc.createdAt:type_name -> google.protobuf.Timestamp
-	0, // 1: bx2cloud.VpcService.Get:input_type -> bx2cloud.VpcIdentificationRequest
-	4, // 2: bx2cloud.VpcService.List:input_type -> google.protobuf.Empty
-	1, // 3: bx2cloud.VpcService.Create:input_type -> bx2cloud.VpcCreationRequest
-	0, // 4: bx2cloud.VpcService.Delete:input_type -> bx2cloud.VpcIdentificationRequest
-	2, // 5: bx2cloud.VpcService.Get:output_type -> bx2cloud.Vpc
-	2, // 6: bx2cloud.VpcService.List:output_type -> bx2cloud.Vpc
-	2, // 7: bx2cloud.VpcService.Create:output_type -> bx2cloud.Vpc
-	4, // 8: bx2cloud.VpcService.Delete:output_type -> google.protobuf.Empty
-	5, // [5:9] is the sub-list for method output_type
-	1, // [1:5] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	6,  // 0: bx2cloud.Subnetwork.createdAt:type_name -> google.protobuf.Timestamp
+	6,  // 1: bx2cloud.Network.createdAt:type_name -> google.protobuf.Timestamp
+	0,  // 2: bx2cloud.SubnetworkService.Get:input_type -> bx2cloud.SubnetworkIdentificationRequest
+	7,  // 3: bx2cloud.SubnetworkService.List:input_type -> google.protobuf.Empty
+	1,  // 4: bx2cloud.SubnetworkService.Create:input_type -> bx2cloud.SubnetworkCreationRequest
+	0,  // 5: bx2cloud.SubnetworkService.Delete:input_type -> bx2cloud.SubnetworkIdentificationRequest
+	3,  // 6: bx2cloud.NetworkService.Get:input_type -> bx2cloud.NetworkIdentificationRequest
+	7,  // 7: bx2cloud.NetworkService.List:input_type -> google.protobuf.Empty
+	4,  // 8: bx2cloud.NetworkService.Create:input_type -> bx2cloud.NetworkCreationRequest
+	3,  // 9: bx2cloud.NetworkService.Delete:input_type -> bx2cloud.NetworkIdentificationRequest
+	2,  // 10: bx2cloud.SubnetworkService.Get:output_type -> bx2cloud.Subnetwork
+	2,  // 11: bx2cloud.SubnetworkService.List:output_type -> bx2cloud.Subnetwork
+	2,  // 12: bx2cloud.SubnetworkService.Create:output_type -> bx2cloud.Subnetwork
+	7,  // 13: bx2cloud.SubnetworkService.Delete:output_type -> google.protobuf.Empty
+	5,  // 14: bx2cloud.NetworkService.Get:output_type -> bx2cloud.Network
+	5,  // 15: bx2cloud.NetworkService.List:output_type -> bx2cloud.Network
+	5,  // 16: bx2cloud.NetworkService.Create:output_type -> bx2cloud.Network
+	7,  // 17: bx2cloud.NetworkService.Delete:output_type -> google.protobuf.Empty
+	10, // [10:18] is the sub-list for method output_type
+	2,  // [2:10] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_init() }
@@ -291,19 +424,15 @@ func file_api_proto_init() {
 	if File_api_proto != nil {
 		return
 	}
-	file_api_proto_msgTypes[0].OneofWrappers = []any{
-		(*VpcIdentificationRequest_Id)(nil),
-		(*VpcIdentificationRequest_Name)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_rawDesc), len(file_api_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_api_proto_goTypes,
 		DependencyIndexes: file_api_proto_depIdxs,
