@@ -62,6 +62,24 @@ func (s *NetworkService) Create(ctx context.Context, req *pb.NetworkCreationRequ
 	return newNetwork, nil
 }
 
+func (s *NetworkService) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb.Network, error) {
+	var network *pb.Network
+	for _, n := range s.networks {
+		if n.Id == req.Identification.Id {
+			network = n
+			break
+		}
+	}
+
+	if network == nil {
+		return nil, fmt.Errorf("could not find network")
+	}
+
+	network.InternetAccess = req.Update.InternetAccess
+
+	return network, nil
+}
+
 func (s *NetworkService) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Network]) error {
 	for _, network := range s.networks {
 		if err := stream.Send(network); err != nil {

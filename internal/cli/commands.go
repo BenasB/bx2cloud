@@ -115,6 +115,35 @@ func networkCreate(client pb.NetworkServiceClient, yamlBytes []byte) error {
 	return nil
 }
 
+func networkUpdate(client pb.NetworkServiceClient, id uint32, yamlBytes []byte) error {
+	input := &inputs.NetworkCreation{}
+	if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
+		return err
+	}
+
+	if err := input.Validate(); err != nil {
+		return err
+	}
+
+	req := &pb.NetworkUpdateRequest{
+		Identification: &pb.NetworkIdentificationRequest{
+			Id: id,
+		},
+		Update: &pb.NetworkCreationRequest{
+			InternetAccess: input.InternetAccess,
+		},
+	}
+
+	resp, err := client.Update(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully updated %d\n", resp.Id)
+
+	return nil
+}
+
 func subnetworkList(client pb.SubnetworkServiceClient) error {
 	stream, err := client.List(context.Background(), &emptypb.Empty{})
 	if err != nil {
@@ -198,6 +227,48 @@ func subnetworkCreate(client pb.SubnetworkServiceClient, yamlBytes []byte) error
 	}
 
 	fmt.Printf("Successfully created %d\n", resp.Id)
+
+	return nil
+}
+
+func subnetworkUpdate(client pb.SubnetworkServiceClient, id uint32, yamlBytes []byte) error {
+	input := &inputs.SubnetworkCreation{}
+	if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
+		return err
+	}
+
+	if err := input.Validate(); err != nil {
+		return err
+	}
+
+	_, ipNet, err := net.ParseCIDR(input.Cidr)
+	if err != nil {
+		return fmt.Errorf("Could not parse CIDR: %v", err)
+	}
+
+	ip := ipNet.IP.To4()
+	if ip == nil {
+		return fmt.Errorf("Could not convert the ip to an IPv4 ip")
+	}
+	address := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
+	prefixLength, _ := ipNet.Mask.Size()
+
+	req := &pb.SubnetworkUpdateRequest{
+		Identification: &pb.SubnetworkIdentificationRequest{
+			Id: id,
+		},
+		Update: &pb.SubnetworkCreationRequest{
+			Address:      address,
+			PrefixLength: uint32(prefixLength),
+		},
+	}
+
+	resp, err := client.Update(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully updated %d\n", resp.Id)
 
 	return nil
 }

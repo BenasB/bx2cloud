@@ -63,6 +63,25 @@ func (s *SubnetworkService) Create(ctx context.Context, req *pb.SubnetworkCreati
 	return newSubnetwork, nil
 }
 
+func (s *SubnetworkService) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*pb.Subnetwork, error) {
+	var subnetwork *pb.Subnetwork
+	for _, sn := range s.subnetworks {
+		if sn.Id == req.Identification.Id {
+			subnetwork = sn
+			break
+		}
+	}
+
+	if subnetwork == nil {
+		return nil, fmt.Errorf("could not find subnetwork")
+	}
+
+	subnetwork.Address = req.Update.Address
+	subnetwork.PrefixLength = req.Update.PrefixLength
+
+	return subnetwork, nil
+}
+
 func (s *SubnetworkService) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Subnetwork]) error {
 	for _, subnetwork := range s.subnetworks {
 		if err := stream.Send(subnetwork); err != nil {

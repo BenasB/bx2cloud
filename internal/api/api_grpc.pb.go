@@ -20,229 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SubnetworkService_Get_FullMethodName    = "/bx2cloud.SubnetworkService/Get"
-	SubnetworkService_List_FullMethodName   = "/bx2cloud.SubnetworkService/List"
-	SubnetworkService_Create_FullMethodName = "/bx2cloud.SubnetworkService/Create"
-	SubnetworkService_Delete_FullMethodName = "/bx2cloud.SubnetworkService/Delete"
-)
-
-// SubnetworkServiceClient is the client API for SubnetworkService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type SubnetworkServiceClient interface {
-	Get(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*Subnetwork, error)
-	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Subnetwork], error)
-	Create(ctx context.Context, in *SubnetworkCreationRequest, opts ...grpc.CallOption) (*Subnetwork, error)
-	Delete(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-}
-
-type subnetworkServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewSubnetworkServiceClient(cc grpc.ClientConnInterface) SubnetworkServiceClient {
-	return &subnetworkServiceClient{cc}
-}
-
-func (c *subnetworkServiceClient) Get(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*Subnetwork, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Subnetwork)
-	err := c.cc.Invoke(ctx, SubnetworkService_Get_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *subnetworkServiceClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Subnetwork], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &SubnetworkService_ServiceDesc.Streams[0], SubnetworkService_List_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[emptypb.Empty, Subnetwork]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SubnetworkService_ListClient = grpc.ServerStreamingClient[Subnetwork]
-
-func (c *subnetworkServiceClient) Create(ctx context.Context, in *SubnetworkCreationRequest, opts ...grpc.CallOption) (*Subnetwork, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Subnetwork)
-	err := c.cc.Invoke(ctx, SubnetworkService_Create_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *subnetworkServiceClient) Delete(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, SubnetworkService_Delete_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// SubnetworkServiceServer is the server API for SubnetworkService service.
-// All implementations must embed UnimplementedSubnetworkServiceServer
-// for forward compatibility.
-type SubnetworkServiceServer interface {
-	Get(context.Context, *SubnetworkIdentificationRequest) (*Subnetwork, error)
-	List(*emptypb.Empty, grpc.ServerStreamingServer[Subnetwork]) error
-	Create(context.Context, *SubnetworkCreationRequest) (*Subnetwork, error)
-	Delete(context.Context, *SubnetworkIdentificationRequest) (*emptypb.Empty, error)
-	mustEmbedUnimplementedSubnetworkServiceServer()
-}
-
-// UnimplementedSubnetworkServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedSubnetworkServiceServer struct{}
-
-func (UnimplementedSubnetworkServiceServer) Get(context.Context, *SubnetworkIdentificationRequest) (*Subnetwork, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
-}
-func (UnimplementedSubnetworkServiceServer) List(*emptypb.Empty, grpc.ServerStreamingServer[Subnetwork]) error {
-	return status.Errorf(codes.Unimplemented, "method List not implemented")
-}
-func (UnimplementedSubnetworkServiceServer) Create(context.Context, *SubnetworkCreationRequest) (*Subnetwork, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
-}
-func (UnimplementedSubnetworkServiceServer) Delete(context.Context, *SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
-}
-func (UnimplementedSubnetworkServiceServer) mustEmbedUnimplementedSubnetworkServiceServer() {}
-func (UnimplementedSubnetworkServiceServer) testEmbeddedByValue()                           {}
-
-// UnsafeSubnetworkServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to SubnetworkServiceServer will
-// result in compilation errors.
-type UnsafeSubnetworkServiceServer interface {
-	mustEmbedUnimplementedSubnetworkServiceServer()
-}
-
-func RegisterSubnetworkServiceServer(s grpc.ServiceRegistrar, srv SubnetworkServiceServer) {
-	// If the following call pancis, it indicates UnimplementedSubnetworkServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&SubnetworkService_ServiceDesc, srv)
-}
-
-func _SubnetworkService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubnetworkIdentificationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SubnetworkServiceServer).Get(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SubnetworkService_Get_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubnetworkServiceServer).Get(ctx, req.(*SubnetworkIdentificationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SubnetworkService_List_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(emptypb.Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(SubnetworkServiceServer).List(m, &grpc.GenericServerStream[emptypb.Empty, Subnetwork]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type SubnetworkService_ListServer = grpc.ServerStreamingServer[Subnetwork]
-
-func _SubnetworkService_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubnetworkCreationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SubnetworkServiceServer).Create(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SubnetworkService_Create_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubnetworkServiceServer).Create(ctx, req.(*SubnetworkCreationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SubnetworkService_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubnetworkIdentificationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SubnetworkServiceServer).Delete(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SubnetworkService_Delete_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SubnetworkServiceServer).Delete(ctx, req.(*SubnetworkIdentificationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// SubnetworkService_ServiceDesc is the grpc.ServiceDesc for SubnetworkService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var SubnetworkService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "bx2cloud.SubnetworkService",
-	HandlerType: (*SubnetworkServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Get",
-			Handler:    _SubnetworkService_Get_Handler,
-		},
-		{
-			MethodName: "Create",
-			Handler:    _SubnetworkService_Create_Handler,
-		},
-		{
-			MethodName: "Delete",
-			Handler:    _SubnetworkService_Delete_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "List",
-			Handler:       _SubnetworkService_List_Handler,
-			ServerStreams: true,
-		},
-	},
-	Metadata: "api.proto",
-}
-
-const (
 	NetworkService_Get_FullMethodName    = "/bx2cloud.NetworkService/Get"
 	NetworkService_List_FullMethodName   = "/bx2cloud.NetworkService/List"
 	NetworkService_Create_FullMethodName = "/bx2cloud.NetworkService/Create"
+	NetworkService_Update_FullMethodName = "/bx2cloud.NetworkService/Update"
 	NetworkService_Delete_FullMethodName = "/bx2cloud.NetworkService/Delete"
 )
 
@@ -253,6 +34,7 @@ type NetworkServiceClient interface {
 	Get(ctx context.Context, in *NetworkIdentificationRequest, opts ...grpc.CallOption) (*Network, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Network], error)
 	Create(ctx context.Context, in *NetworkCreationRequest, opts ...grpc.CallOption) (*Network, error)
+	Update(ctx context.Context, in *NetworkUpdateRequest, opts ...grpc.CallOption) (*Network, error)
 	Delete(ctx context.Context, in *NetworkIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -303,6 +85,16 @@ func (c *networkServiceClient) Create(ctx context.Context, in *NetworkCreationRe
 	return out, nil
 }
 
+func (c *networkServiceClient) Update(ctx context.Context, in *NetworkUpdateRequest, opts ...grpc.CallOption) (*Network, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Network)
+	err := c.cc.Invoke(ctx, NetworkService_Update_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *networkServiceClient) Delete(ctx context.Context, in *NetworkIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -320,6 +112,7 @@ type NetworkServiceServer interface {
 	Get(context.Context, *NetworkIdentificationRequest) (*Network, error)
 	List(*emptypb.Empty, grpc.ServerStreamingServer[Network]) error
 	Create(context.Context, *NetworkCreationRequest) (*Network, error)
+	Update(context.Context, *NetworkUpdateRequest) (*Network, error)
 	Delete(context.Context, *NetworkIdentificationRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedNetworkServiceServer()
 }
@@ -339,6 +132,9 @@ func (UnimplementedNetworkServiceServer) List(*emptypb.Empty, grpc.ServerStreami
 }
 func (UnimplementedNetworkServiceServer) Create(context.Context, *NetworkCreationRequest) (*Network, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (UnimplementedNetworkServiceServer) Update(context.Context, *NetworkUpdateRequest) (*Network, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedNetworkServiceServer) Delete(context.Context, *NetworkIdentificationRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
@@ -411,6 +207,24 @@ func _NetworkService_Create_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NetworkService_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NetworkUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NetworkServiceServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NetworkService_Update_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NetworkServiceServer).Update(ctx, req.(*NetworkUpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _NetworkService_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(NetworkIdentificationRequest)
 	if err := dec(in); err != nil {
@@ -445,6 +259,10 @@ var NetworkService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _NetworkService_Create_Handler,
 		},
 		{
+			MethodName: "Update",
+			Handler:    _NetworkService_Update_Handler,
+		},
+		{
 			MethodName: "Delete",
 			Handler:    _NetworkService_Delete_Handler,
 		},
@@ -453,6 +271,264 @@ var NetworkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "List",
 			Handler:       _NetworkService_List_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "api.proto",
+}
+
+const (
+	SubnetworkService_Get_FullMethodName    = "/bx2cloud.SubnetworkService/Get"
+	SubnetworkService_List_FullMethodName   = "/bx2cloud.SubnetworkService/List"
+	SubnetworkService_Create_FullMethodName = "/bx2cloud.SubnetworkService/Create"
+	SubnetworkService_Update_FullMethodName = "/bx2cloud.SubnetworkService/Update"
+	SubnetworkService_Delete_FullMethodName = "/bx2cloud.SubnetworkService/Delete"
+)
+
+// SubnetworkServiceClient is the client API for SubnetworkService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type SubnetworkServiceClient interface {
+	Get(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*Subnetwork, error)
+	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Subnetwork], error)
+	Create(ctx context.Context, in *SubnetworkCreationRequest, opts ...grpc.CallOption) (*Subnetwork, error)
+	Update(ctx context.Context, in *SubnetworkUpdateRequest, opts ...grpc.CallOption) (*Subnetwork, error)
+	Delete(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+}
+
+type subnetworkServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewSubnetworkServiceClient(cc grpc.ClientConnInterface) SubnetworkServiceClient {
+	return &subnetworkServiceClient{cc}
+}
+
+func (c *subnetworkServiceClient) Get(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*Subnetwork, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Subnetwork)
+	err := c.cc.Invoke(ctx, SubnetworkService_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subnetworkServiceClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Subnetwork], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &SubnetworkService_ServiceDesc.Streams[0], SubnetworkService_List_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[emptypb.Empty, Subnetwork]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type SubnetworkService_ListClient = grpc.ServerStreamingClient[Subnetwork]
+
+func (c *subnetworkServiceClient) Create(ctx context.Context, in *SubnetworkCreationRequest, opts ...grpc.CallOption) (*Subnetwork, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Subnetwork)
+	err := c.cc.Invoke(ctx, SubnetworkService_Create_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subnetworkServiceClient) Update(ctx context.Context, in *SubnetworkUpdateRequest, opts ...grpc.CallOption) (*Subnetwork, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Subnetwork)
+	err := c.cc.Invoke(ctx, SubnetworkService_Update_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subnetworkServiceClient) Delete(ctx context.Context, in *SubnetworkIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, SubnetworkService_Delete_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// SubnetworkServiceServer is the server API for SubnetworkService service.
+// All implementations must embed UnimplementedSubnetworkServiceServer
+// for forward compatibility.
+type SubnetworkServiceServer interface {
+	Get(context.Context, *SubnetworkIdentificationRequest) (*Subnetwork, error)
+	List(*emptypb.Empty, grpc.ServerStreamingServer[Subnetwork]) error
+	Create(context.Context, *SubnetworkCreationRequest) (*Subnetwork, error)
+	Update(context.Context, *SubnetworkUpdateRequest) (*Subnetwork, error)
+	Delete(context.Context, *SubnetworkIdentificationRequest) (*emptypb.Empty, error)
+	mustEmbedUnimplementedSubnetworkServiceServer()
+}
+
+// UnimplementedSubnetworkServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedSubnetworkServiceServer struct{}
+
+func (UnimplementedSubnetworkServiceServer) Get(context.Context, *SubnetworkIdentificationRequest) (*Subnetwork, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedSubnetworkServiceServer) List(*emptypb.Empty, grpc.ServerStreamingServer[Subnetwork]) error {
+	return status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedSubnetworkServiceServer) Create(context.Context, *SubnetworkCreationRequest) (*Subnetwork, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (UnimplementedSubnetworkServiceServer) Update(context.Context, *SubnetworkUpdateRequest) (*Subnetwork, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
+}
+func (UnimplementedSubnetworkServiceServer) Delete(context.Context, *SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedSubnetworkServiceServer) mustEmbedUnimplementedSubnetworkServiceServer() {}
+func (UnimplementedSubnetworkServiceServer) testEmbeddedByValue()                           {}
+
+// UnsafeSubnetworkServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SubnetworkServiceServer will
+// result in compilation errors.
+type UnsafeSubnetworkServiceServer interface {
+	mustEmbedUnimplementedSubnetworkServiceServer()
+}
+
+func RegisterSubnetworkServiceServer(s grpc.ServiceRegistrar, srv SubnetworkServiceServer) {
+	// If the following call pancis, it indicates UnimplementedSubnetworkServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&SubnetworkService_ServiceDesc, srv)
+}
+
+func _SubnetworkService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubnetworkIdentificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubnetworkServiceServer).Get(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubnetworkService_Get_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubnetworkServiceServer).Get(ctx, req.(*SubnetworkIdentificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubnetworkService_List_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(emptypb.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SubnetworkServiceServer).List(m, &grpc.GenericServerStream[emptypb.Empty, Subnetwork]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type SubnetworkService_ListServer = grpc.ServerStreamingServer[Subnetwork]
+
+func _SubnetworkService_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubnetworkCreationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubnetworkServiceServer).Create(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubnetworkService_Create_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubnetworkServiceServer).Create(ctx, req.(*SubnetworkCreationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubnetworkService_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubnetworkUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubnetworkServiceServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubnetworkService_Update_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubnetworkServiceServer).Update(ctx, req.(*SubnetworkUpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubnetworkService_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubnetworkIdentificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubnetworkServiceServer).Delete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubnetworkService_Delete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubnetworkServiceServer).Delete(ctx, req.(*SubnetworkIdentificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// SubnetworkService_ServiceDesc is the grpc.ServiceDesc for SubnetworkService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var SubnetworkService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "bx2cloud.SubnetworkService",
+	HandlerType: (*SubnetworkServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Get",
+			Handler:    _SubnetworkService_Get_Handler,
+		},
+		{
+			MethodName: "Create",
+			Handler:    _SubnetworkService_Create_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _SubnetworkService_Update_Handler,
+		},
+		{
+			MethodName: "Delete",
+			Handler:    _SubnetworkService_Delete_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "List",
+			Handler:       _SubnetworkService_List_Handler,
 			ServerStreams: true,
 		},
 	},

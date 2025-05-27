@@ -11,6 +11,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -31,6 +34,7 @@ type subnetworkResourceModel struct {
 	Id        types.Int32  `tfsdk:"id"`
 	Cidr      types.String `tfsdk:"cidr"`
 	CreatedAt types.String `tfsdk:"created_at"`
+	UpdatedAt types.String `tfsdk:"updated_at"`
 }
 
 func (r *subnetworkResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -60,11 +64,20 @@ func (r *subnetworkResource) Schema(_ context.Context, req resource.SchemaReques
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int32Attribute{
 				Computed: true,
+				PlanModifiers: []planmodifier.Int32{
+					int32planmodifier.UseStateForUnknown(),
+				},
 			},
 			"cidr": schema.StringAttribute{
 				Required: true,
 			},
 			"created_at": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"updated_at": schema.StringAttribute{
 				Computed: true,
 			},
 		},
@@ -125,6 +138,7 @@ func (r *subnetworkResource) Create(ctx context.Context, req resource.CreateRequ
 	plan.Id = types.Int32Value(int32(subnetwork.Id))
 	plan.Cidr = types.StringValue(cidr)
 	plan.CreatedAt = types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339))
+	plan.UpdatedAt = types.StringValue(time.Now().Format(time.RFC3339))
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -173,7 +187,70 @@ func (r *subnetworkResource) Read(ctx context.Context, req resource.ReadRequest,
 }
 
 func (r *subnetworkResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	panic("unimplemented")
+	var plan subnetworkResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	_, ipNet, err := net.ParseCIDR(plan.Cidr.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("cidr"),
+			"Invalid CIDR Format",
+			fmt.Sprintf("Could not parse CIDR: %v. Expected format is <address>/<prefix> (e.g., 10.0.0.0/16)", err),
+		)
+		return
+	}
+
+	ip := ipNet.IP.To4()
+	if ip == nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("cidr"),
+			"Invalid CIDR Format",
+			"Could not convert the ip to an IPv4 ip",
+		)
+		return
+	}
+	address := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
+	prefixLength, _ := ipNet.Mask.Size()
+
+	clientReq := &pb.SubnetworkUpdateRequest{
+		Identification: &pb.SubnetworkIdentificationRequest{
+			Id: uint32(plan.Id.ValueInt32()),
+		},
+		Update: &pb.SubnetworkCreationRequest{
+			Address:      address,
+			PrefixLength: uint32(prefixLength),
+		},
+	}
+
+	subnetwork, err := r.client.Update(ctx, clientReq)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating subnetwork",
+			"Could not update subnetwork, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	cidr := fmt.Sprintf("%d.%d.%d.%d/%d",
+		byte(subnetwork.Address>>24),
+		byte(subnetwork.Address>>16),
+		byte(subnetwork.Address>>8),
+		byte(subnetwork.Address),
+		subnetwork.PrefixLength)
+
+	plan.Id = types.Int32Value(int32(subnetwork.Id))
+	plan.Cidr = types.StringValue(cidr)
+	plan.UpdatedAt = types.StringValue(time.Now().Format(time.RFC3339))
+
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (r *subnetworkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

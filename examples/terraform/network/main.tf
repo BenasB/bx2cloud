@@ -11,9 +11,9 @@ provider "bx2cloud" {
 }
 
 resource "bx2cloud_network" "my-net" {
-  internet_access = false
+  internet_access = true
 }
 
 resource "bx2cloud_subnetwork" "my-subnet" {
-  cidr = "10.0.42.0/24"
+  cidr = "10.0.43.0/24"
 }

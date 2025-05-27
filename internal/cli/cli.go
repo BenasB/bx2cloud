@@ -85,6 +85,28 @@ func Run(args []string) exits.ExitCode {
 			}
 
 			cmdErr = networkCreate(client, yamlBytes)
+		case "update":
+			yamlBytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				cmdErr = err
+				break
+			}
+
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+
+			cmdErr = networkUpdate(client, uint32(id), yamlBytes)
 		default:
 			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
 			return exits.UNKNOWN_SUBCOMMAND
@@ -141,6 +163,28 @@ func Run(args []string) exits.ExitCode {
 			}
 
 			cmdErr = subnetworkCreate(client, yamlBytes)
+		case "update":
+			yamlBytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				cmdErr = err
+				break
+			}
+
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+
+			cmdErr = subnetworkUpdate(client, uint32(id), yamlBytes)
 		default:
 			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
 			return exits.UNKNOWN_SUBCOMMAND
