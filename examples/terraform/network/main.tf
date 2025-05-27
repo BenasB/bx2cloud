@@ -10,7 +10,10 @@ provider "bx2cloud" {
   host = "localhost:8080"
 }
 
-resource "bx2cloud_vpc" "my-vpc" {
-  name = "my-tf-vpc"
-  cidr = "10.0.4.0/24"
+resource "bx2cloud_network" "my-net" {
+  internet_access = false
+}
+
+resource "bx2cloud_subnetwork" "my-subnet" {
+  cidr = "10.0.42.0/24"
 }

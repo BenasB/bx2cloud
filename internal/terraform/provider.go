@@ -20,7 +20,8 @@ type bx2cloudProviderModel struct {
 }
 
 type bx2cloudClients struct {
-	vpc pb.VpcServiceClient
+	network    pb.NetworkServiceClient
+	subnetwork pb.SubnetworkServiceClient
 }
 
 var _ provider.Provider = &bx2cloudProvider{}
@@ -109,7 +110,8 @@ func (p *bx2cloudProvider) Configure(ctx context.Context, req provider.Configure
 	}
 
 	clients := &bx2cloudClients{
-		vpc: pb.NewVpcServiceClient(conn),
+		network:    pb.NewNetworkServiceClient(conn),
+		subnetwork: pb.NewSubnetworkServiceClient(conn),
 	}
 
 	resp.DataSourceData = clients
@@ -118,12 +120,14 @@ func (p *bx2cloudProvider) Configure(ctx context.Context, req provider.Configure
 
 func (p *bx2cloudProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewVpcDataSource,
+		NewNetworkDataSource,
+		NewSubnetworkDataSource,
 	}
 }
 
 func (p *bx2cloudProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewVpcResource,
+		NewNetworkResource,
+		NewSubnetworkResource,
 	}
 }
