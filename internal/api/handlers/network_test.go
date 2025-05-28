@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"strconv"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/handlers"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -37,7 +38,7 @@ func (s *mockStream[T]) Send(item T) error {
 }
 
 func TestNetwork_Create(t *testing.T) {
-	service := NewNetworkService(make([]*pb.Network, 0))
+	service := handlers.NewNetworkService(make([]*pb.Network, 0))
 	req := &pb.NetworkCreationRequest{
 		InternetAccess: true,
 	}
@@ -50,7 +51,7 @@ func TestNetwork_Create(t *testing.T) {
 
 func TestNetwork_Delete(t *testing.T) {
 	for _, tt := range testNetworks {
-		service := NewNetworkService(testNetworks)
+		service := handlers.NewNetworkService(testNetworks)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
@@ -65,7 +66,7 @@ func TestNetwork_Delete(t *testing.T) {
 
 func TestNetwork_Get(t *testing.T) {
 	for _, tt := range testNetworks {
-		service := NewNetworkService(testNetworks)
+		service := handlers.NewNetworkService(testNetworks)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.NetworkIdentificationRequest{
@@ -84,7 +85,7 @@ func TestNetwork_Get(t *testing.T) {
 func TestNetwork_List(t *testing.T) {
 	stream := &mockStream[*pb.Network]{}
 
-	service := NewNetworkService(testNetworks)
+	service := handlers.NewNetworkService(testNetworks)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testNetworks) != len(stream.SentItems) {
