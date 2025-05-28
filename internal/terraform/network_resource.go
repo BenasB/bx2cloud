@@ -41,17 +41,17 @@ func (r *networkResource) Configure(_ context.Context, req resource.ConfigureReq
 		return
 	}
 
-	clients, ok := req.ProviderData.(*bx2cloudClients)
+	clients, ok := req.ProviderData.(*Bx2cloudClients)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *bx2cloudClients, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *Bx2cloudClients, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	r.client = clients.network
+	r.client = clients.Network
 }
 
 func (r *networkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

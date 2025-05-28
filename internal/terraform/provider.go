@@ -19,9 +19,9 @@ type bx2cloudProviderModel struct {
 	Host types.String `tfsdk:"host"`
 }
 
-type bx2cloudClients struct {
-	network    pb.NetworkServiceClient
-	subnetwork pb.SubnetworkServiceClient
+type Bx2cloudClients struct {
+	Network    pb.NetworkServiceClient
+	Subnetwork pb.SubnetworkServiceClient
 }
 
 var _ provider.Provider = &bx2cloudProvider{}
@@ -109,9 +109,9 @@ func (p *bx2cloudProvider) Configure(ctx context.Context, req provider.Configure
 		return
 	}
 
-	clients := &bx2cloudClients{
-		network:    pb.NewNetworkServiceClient(conn),
-		subnetwork: pb.NewSubnetworkServiceClient(conn),
+	clients := &Bx2cloudClients{
+		Network:    pb.NewNetworkServiceClient(conn),
+		Subnetwork: pb.NewSubnetworkServiceClient(conn),
 	}
 
 	resp.DataSourceData = clients
