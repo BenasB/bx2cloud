@@ -58,7 +58,7 @@ func Run(args []string) exits.ExitCode {
 
 			id, err := strconv.ParseUint(idString, 10, 32)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
 			cmdErr = networkGet(client, uint32(id))
@@ -73,7 +73,7 @@ func Run(args []string) exits.ExitCode {
 
 			id, err := strconv.ParseUint(idString, 10, 32)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
 			cmdErr = networkDelete(client, uint32(id))
@@ -102,7 +102,7 @@ func Run(args []string) exits.ExitCode {
 
 			id, err := strconv.ParseUint(idString, 10, 32)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
 
@@ -136,7 +136,7 @@ func Run(args []string) exits.ExitCode {
 
 			id, err := strconv.ParseUint(idString, 10, 32)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
 			cmdErr = subnetworkGet(client, uint32(id))
@@ -151,7 +151,7 @@ func Run(args []string) exits.ExitCode {
 
 			id, err := strconv.ParseUint(idString, 10, 32)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
 			cmdErr = subnetworkDelete(client, uint32(id))
@@ -180,7 +180,7 @@ func Run(args []string) exits.ExitCode {
 
 			id, err := strconv.ParseUint(idString, 10, 32)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not convert the id '%s' argument to an integer\n", id)
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
 

@@ -10,8 +10,9 @@ import (
 	"time"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
-	"github.com/BenasB/bx2cloud/internal/api/handlers"
 	"github.com/BenasB/bx2cloud/internal/api/id"
+	"github.com/BenasB/bx2cloud/internal/api/network"
+	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -310,7 +311,8 @@ func main() {
 			CreatedAt:      timestamppb.New(time.Now().Add(-time.Minute)),
 		},
 	}
-	pb.RegisterNetworkServiceServer(grpcServer, handlers.NewNetworkService(sampleNetworks))
+	networkRepository := network.NewMemoryNetworkRepository(sampleNetworks)
+	pb.RegisterNetworkServiceServer(grpcServer, network.NewNetworkService(networkRepository))
 
 	var sampleSubnetworks = []*pb.Subnetwork{
 		&pb.Subnetwork{
@@ -326,7 +328,8 @@ func main() {
 			CreatedAt:    timestamppb.New(time.Now().Add(-time.Minute)),
 		},
 	}
-	pb.RegisterSubnetworkServiceServer(grpcServer, handlers.NewSubnetworkService(sampleSubnetworks))
+	subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(sampleSubnetworks)
+	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewSubnetworkService(subnetworkRepository))
 
 	log.Printf("Starting server on %s\n", address)
 	if err := grpcServer.Serve(lis); err != nil {

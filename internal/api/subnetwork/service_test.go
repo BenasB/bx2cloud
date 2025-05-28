@@ -1,18 +1,35 @@
-package handlers_test
+package subnetwork_test
 
 import (
+	"context"
 	"encoding/binary"
 	"strconv"
 	"testing"
 	"time"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
-	"github.com/BenasB/bx2cloud/internal/api/handlers"
+	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type mockStream[T any] struct {
+	grpc.ServerStream
+	SentItems []T
+	ctx       context.Context
+}
+
+func (s *mockStream[T]) Send(item T) error {
+	s.SentItems = append(s.SentItems, item)
+	return nil
+}
+
+func (s *mockStream[T]) Context() context.Context {
+	return s.ctx
+}
 
 var testSubnetworks = []*pb.Subnetwork{
 	&pb.Subnetwork{
@@ -30,7 +47,8 @@ var testSubnetworks = []*pb.Subnetwork{
 }
 
 func TestSubnetwork_Create(t *testing.T) {
-	service := handlers.NewSubnetworkService(make([]*pb.Subnetwork, 0))
+	repository := subnetwork.NewMemorySubnetworkRepository(make([]*pb.Subnetwork, 0))
+	service := subnetwork.NewSubnetworkService(repository)
 	req := &pb.SubnetworkCreationRequest{
 		Address:      binary.BigEndian.Uint32([]byte{192, 168, 0, 0}),
 		PrefixLength: 30,
@@ -44,7 +62,8 @@ func TestSubnetwork_Create(t *testing.T) {
 
 func TestSubnetwork_Delete(t *testing.T) {
 	for _, tt := range testSubnetworks {
-		service := handlers.NewSubnetworkService(testSubnetworks)
+		repository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
+		service := subnetwork.NewSubnetworkService(repository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -59,7 +78,8 @@ func TestSubnetwork_Delete(t *testing.T) {
 
 func TestSubnetwork_Get(t *testing.T) {
 	for _, tt := range testSubnetworks {
-		service := handlers.NewSubnetworkService(testSubnetworks)
+		repository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
+		service := subnetwork.NewSubnetworkService(repository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -76,9 +96,12 @@ func TestSubnetwork_Get(t *testing.T) {
 }
 
 func TestSubnetwork_List(t *testing.T) {
-	stream := &mockStream[*pb.Subnetwork]{}
+	stream := &mockStream[*pb.Subnetwork]{
+		ctx: t.Context(),
+	}
 
-	service := handlers.NewSubnetworkService(testSubnetworks)
+	repository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
+	service := subnetwork.NewSubnetworkService(repository)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testSubnetworks) != len(stream.SentItems) {

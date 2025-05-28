@@ -269,8 +269,9 @@ func (x *SubnetworkIdentificationRequest) GetId() uint32 {
 
 type SubnetworkCreationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Address       uint32                 `protobuf:"fixed32,1,opt,name=address,proto3" json:"address,omitempty"`
-	PrefixLength  uint32                 `protobuf:"fixed32,2,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
+	NetworkId     uint32                 `protobuf:"varint,1,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	Address       uint32                 `protobuf:"fixed32,2,opt,name=address,proto3" json:"address,omitempty"`
+	PrefixLength  uint32                 `protobuf:"fixed32,3,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -303,6 +304,13 @@ func (x *SubnetworkCreationRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SubnetworkCreationRequest.ProtoReflect.Descriptor instead.
 func (*SubnetworkCreationRequest) Descriptor() ([]byte, []int) {
 	return file_api_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *SubnetworkCreationRequest) GetNetworkId() uint32 {
+	if x != nil {
+		return x.NetworkId
+	}
+	return 0
 }
 
 func (x *SubnetworkCreationRequest) GetAddress() uint32 {
@@ -456,10 +464,12 @@ const file_api_proto_rawDesc = "" +
 	"\x0finternet_access\x18\x02 \x01(\bR\x0einternetAccess\x128\n" +
 	"\tcreatedAt\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"1\n" +
 	"\x1fSubnetworkIdentificationRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\rR\x02id\"Z\n" +
-	"\x19SubnetworkCreationRequest\x12\x18\n" +
-	"\aaddress\x18\x01 \x01(\aR\aaddress\x12#\n" +
-	"\rprefix_length\x18\x02 \x01(\aR\fprefixLength\"\xa9\x01\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\"y\n" +
+	"\x19SubnetworkCreationRequest\x12\x1d\n" +
+	"\n" +
+	"network_id\x18\x01 \x01(\rR\tnetworkId\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
+	"\rprefix_length\x18\x03 \x01(\aR\fprefixLength\"\xa9\x01\n" +
 	"\x17SubnetworkUpdateRequest\x12Q\n" +
 	"\x0eidentification\x18\x01 \x01(\v2).bx2cloud.SubnetworkIdentificationRequestR\x0eidentification\x12;\n" +
 	"\x06update\x18\x02 \x01(\v2#.bx2cloud.SubnetworkCreationRequestR\x06update\"\x95\x01\n" +

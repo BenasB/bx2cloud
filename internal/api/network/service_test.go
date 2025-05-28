@@ -1,12 +1,13 @@
-package handlers_test
+package network_test
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
-	"github.com/BenasB/bx2cloud/internal/api/handlers"
+	"github.com/BenasB/bx2cloud/internal/api/network"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -30,6 +31,7 @@ var testNetworks = []*pb.Network{
 type mockStream[T any] struct {
 	grpc.ServerStream
 	SentItems []T
+	ctx       context.Context
 }
 
 func (s *mockStream[T]) Send(item T) error {
@@ -37,8 +39,13 @@ func (s *mockStream[T]) Send(item T) error {
 	return nil
 }
 
+func (s *mockStream[T]) Context() context.Context {
+	return s.ctx
+}
+
 func TestNetwork_Create(t *testing.T) {
-	service := handlers.NewNetworkService(make([]*pb.Network, 0))
+	repository := network.NewMemoryNetworkRepository(make([]*pb.Network, 0))
+	service := network.NewNetworkService(repository)
 	req := &pb.NetworkCreationRequest{
 		InternetAccess: true,
 	}
@@ -51,7 +58,8 @@ func TestNetwork_Create(t *testing.T) {
 
 func TestNetwork_Delete(t *testing.T) {
 	for _, tt := range testNetworks {
-		service := handlers.NewNetworkService(testNetworks)
+		repository := network.NewMemoryNetworkRepository(testNetworks)
+		service := network.NewNetworkService(repository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
@@ -66,7 +74,8 @@ func TestNetwork_Delete(t *testing.T) {
 
 func TestNetwork_Get(t *testing.T) {
 	for _, tt := range testNetworks {
-		service := handlers.NewNetworkService(testNetworks)
+		repository := network.NewMemoryNetworkRepository(testNetworks)
+		service := network.NewNetworkService(repository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.NetworkIdentificationRequest{
@@ -83,9 +92,12 @@ func TestNetwork_Get(t *testing.T) {
 }
 
 func TestNetwork_List(t *testing.T) {
-	stream := &mockStream[*pb.Network]{}
+	stream := &mockStream[*pb.Network]{
+		ctx: t.Context(),
+	}
 
-	service := handlers.NewNetworkService(testNetworks)
+	repository := network.NewMemoryNetworkRepository(testNetworks)
+	service := network.NewNetworkService(repository)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testNetworks) != len(stream.SentItems) {

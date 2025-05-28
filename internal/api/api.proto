@@ -46,8 +46,9 @@ message SubnetworkIdentificationRequest {
 }
 
 message SubnetworkCreationRequest {
-    fixed32 address = 1;
-    fixed32 prefix_length = 2;
+    uint32 network_id = 1;
+    fixed32 address = 2;
+    fixed32 prefix_length = 3;
 }
 
 message SubnetworkUpdateRequest {
