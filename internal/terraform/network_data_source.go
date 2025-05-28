@@ -27,7 +27,7 @@ type networkDataSource struct {
 }
 
 type networkDataSourceModel struct {
-	Id             types.Int32  `tfsdk:"id"`
+	Id             types.String `tfsdk:"id"`
 	InternetAccess types.Bool   `tfsdk:"internet_access"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 }
@@ -57,7 +57,7 @@ func (d *networkDataSource) Metadata(_ context.Context, req datasource.MetadataR
 func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.Int32Attribute{
+			"id": schema.StringAttribute{
 				Required: true,
 			},
 			"internet_access": schema.BoolAttribute{
@@ -71,31 +71,39 @@ func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 }
 
 func (d *networkDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var id types.Int32
-	diags := req.Config.GetAttribute(ctx, path.Root("id"), &id)
+	var state networkDataSourceModel
+	diags := req.Config.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	id, err := strconv.ParseInt(state.Id.ValueString(), 10, 32)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"Invalid id Format",
+			fmt.Sprintf("Could not parse id into an integer: %v", err),
+		)
+		return
+	}
+
 	clientReq := &pb.NetworkIdentificationRequest{
-		Id: uint32(id.ValueInt32()),
+		Id: uint32(id),
 	}
 
 	network, err := d.client.Get(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading bx2cloud network",
-			"Could not read bx2cloud network id "+strconv.FormatInt(int64(id.ValueInt32()), 10)+": "+err.Error(),
+			"Could not read bx2cloud network id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}
 
-	state := networkDataSourceModel{
-		Id:             types.Int32Value(int32(network.Id)),
-		InternetAccess: types.BoolValue(network.InternetAccess),
-		CreatedAt:      types.StringValue(network.CreatedAt.AsTime().Format(time.RFC3339)),
-	}
+	state.Id = types.StringValue(strconv.FormatInt(int64(network.Id), 10))
+	state.InternetAccess = types.BoolValue(network.InternetAccess)
+	state.CreatedAt = types.StringValue(network.CreatedAt.AsTime().Format(time.RFC3339))
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)

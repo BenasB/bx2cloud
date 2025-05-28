@@ -11,15 +11,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var (
-	_ resource.Resource              = &subnetworkResource{}
-	_ resource.ResourceWithConfigure = &subnetworkResource{}
+	_ resource.Resource                = &subnetworkResource{}
+	_ resource.ResourceWithConfigure   = &subnetworkResource{}
+	_ resource.ResourceWithImportState = &subnetworkResource{}
 )
 
 func NewSubnetworkResource() resource.Resource {
@@ -31,7 +31,7 @@ type subnetworkResource struct {
 }
 
 type subnetworkResourceModel struct {
-	Id        types.Int32  `tfsdk:"id"`
+	Id        types.String `tfsdk:"id"`
 	Cidr      types.String `tfsdk:"cidr"`
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
@@ -62,10 +62,10 @@ func (r *subnetworkResource) Metadata(_ context.Context, req resource.MetadataRe
 func (r *subnetworkResource) Schema(_ context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.Int32Attribute{
+			"id": schema.StringAttribute{
 				Computed: true,
-				PlanModifiers: []planmodifier.Int32{
-					int32planmodifier.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"cidr": schema.StringAttribute{
@@ -135,7 +135,7 @@ func (r *subnetworkResource) Create(ctx context.Context, req resource.CreateRequ
 		byte(subnetwork.Address),
 		subnetwork.PrefixLength)
 
-	plan.Id = types.Int32Value(int32(subnetwork.Id))
+	plan.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
 	plan.Cidr = types.StringValue(cidr)
 	plan.CreatedAt = types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(time.Now().Format(time.RFC3339))
@@ -155,15 +155,25 @@ func (r *subnetworkResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
+	id, err := strconv.ParseInt(state.Id.ValueString(), 10, 32)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"Invalid id Format",
+			fmt.Sprintf("Could not parse id into an integer: %v", err),
+		)
+		return
+	}
+
 	clientReq := &pb.SubnetworkIdentificationRequest{
-		Id: uint32(state.Id.ValueInt32()),
+		Id: uint32(id),
 	}
 
 	subnetwork, err := r.client.Get(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading bx2cloud subnetwork",
-			"Could not read bx2cloud subnetwork id "+strconv.FormatInt(int64(state.Id.ValueInt32()), 10)+": "+err.Error(),
+			"Could not read bx2cloud subnetwork id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -175,7 +185,7 @@ func (r *subnetworkResource) Read(ctx context.Context, req resource.ReadRequest,
 		byte(subnetwork.Address),
 		subnetwork.PrefixLength)
 
-	state.Id = types.Int32Value(int32(subnetwork.Id))
+	state.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
 	state.Cidr = types.StringValue(cidr)
 	state.CreatedAt = types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339))
 
@@ -216,9 +226,19 @@ func (r *subnetworkResource) Update(ctx context.Context, req resource.UpdateRequ
 	address := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
 	prefixLength, _ := ipNet.Mask.Size()
 
+	id, err := strconv.ParseInt(plan.Id.ValueString(), 10, 32)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"Invalid id Format",
+			fmt.Sprintf("Could not parse id into an integer: %v", err),
+		)
+		return
+	}
+
 	clientReq := &pb.SubnetworkUpdateRequest{
 		Identification: &pb.SubnetworkIdentificationRequest{
-			Id: uint32(plan.Id.ValueInt32()),
+			Id: uint32(id),
 		},
 		Update: &pb.SubnetworkCreationRequest{
 			Address:      address,
@@ -242,7 +262,7 @@ func (r *subnetworkResource) Update(ctx context.Context, req resource.UpdateRequ
 		byte(subnetwork.Address),
 		subnetwork.PrefixLength)
 
-	plan.Id = types.Int32Value(int32(subnetwork.Id))
+	plan.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
 	plan.Cidr = types.StringValue(cidr)
 	plan.UpdatedAt = types.StringValue(time.Now().Format(time.RFC3339))
 
@@ -261,16 +281,30 @@ func (r *subnetworkResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	clientReq := &pb.SubnetworkIdentificationRequest{
-		Id: uint32(state.Id.ValueInt32()),
-	}
-
-	_, err := r.client.Delete(ctx, clientReq)
+	id, err := strconv.ParseInt(state.Id.ValueString(), 10, 32)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error deleting bx2cloud subnetwork",
-			"Could not delete bx2cloud subnetwork id "+strconv.FormatInt(int64(state.Id.ValueInt32()), 10)+": "+err.Error(),
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"Invalid id Format",
+			fmt.Sprintf("Could not parse id into an integer: %v", err),
 		)
 		return
 	}
+
+	clientReq := &pb.SubnetworkIdentificationRequest{
+		Id: uint32(id),
+	}
+
+	_, err = r.client.Delete(ctx, clientReq)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error deleting bx2cloud subnetwork",
+			"Could not delete bx2cloud subnetwork id "+state.Id.ValueString()+": "+err.Error(),
+		)
+		return
+	}
+}
+
+func (r *subnetworkResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

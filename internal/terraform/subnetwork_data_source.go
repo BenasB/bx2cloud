@@ -27,7 +27,7 @@ type subnetworkDataSource struct {
 }
 
 type subnetworkDataSourceModel struct {
-	Id        types.Int32  `tfsdk:"id"`
+	Id        types.String `tfsdk:"id"`
 	Cidr      types.String `tfsdk:"cidr"`
 	CreatedAt types.String `tfsdk:"created_at"`
 }
@@ -57,7 +57,7 @@ func (d *subnetworkDataSource) Metadata(_ context.Context, req datasource.Metada
 func (d *subnetworkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.Int32Attribute{
+			"id": schema.StringAttribute{
 				Required: true,
 			},
 			"cidr": schema.StringAttribute{
@@ -71,22 +71,32 @@ func (d *subnetworkDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 }
 
 func (d *subnetworkDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var id types.Int32
-	diags := req.Config.GetAttribute(ctx, path.Root("id"), &id)
+	var state subnetworkDataSourceModel
+	diags := req.Config.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	id, err := strconv.ParseInt(state.Id.ValueString(), 10, 32)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"Invalid id Format",
+			fmt.Sprintf("Could not parse id into an integer: %v", err),
+		)
+		return
+	}
+
 	clientReq := &pb.SubnetworkIdentificationRequest{
-		Id: uint32(id.ValueInt32()),
+		Id: uint32(id),
 	}
 
 	subnetwork, err := d.client.Get(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading bx2cloud subnetwork",
-			"Could not read bx2cloud subnetwork id "+strconv.FormatInt(int64(id.ValueInt32()), 10)+": "+err.Error(),
+			"Could not read bx2cloud subnetwork id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -98,11 +108,9 @@ func (d *subnetworkDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		byte(subnetwork.Address),
 		subnetwork.PrefixLength)
 
-	state := subnetworkDataSourceModel{
-		Id:        types.Int32Value(int32(subnetwork.Id)),
-		Cidr:      types.StringValue(cidr),
-		CreatedAt: types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339)),
-	}
+	state.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
+	state.Cidr = types.StringValue(cidr)
+	state.CreatedAt = types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339))
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
