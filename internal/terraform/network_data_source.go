@@ -61,7 +61,8 @@ func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Required: true,
 			},
 			"internet_access": schema.BoolAttribute{
-				Computed: true,
+				Description: "Whether the network allows devices on it to access the internet.",
+				Computed:    true,
 			},
 			"created_at": schema.StringAttribute{
 				Computed: true,

@@ -68,7 +68,8 @@ func (r *networkResource) Schema(_ context.Context, req resource.SchemaRequest, 
 				},
 			},
 			"internet_access": schema.BoolAttribute{
-				Required: true,
+				Description: "Whether the network allows devices on it to access the internet.",
+				Required:    true,
 			},
 			"created_at": schema.StringAttribute{
 				Computed: true,

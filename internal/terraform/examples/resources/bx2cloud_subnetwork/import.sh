@@ -1,0 +1,1 @@
+terraform import bx2cloud_subnetwork.my_subnetwork 42

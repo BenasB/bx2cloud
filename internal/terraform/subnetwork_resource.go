@@ -69,7 +69,8 @@ func (r *subnetworkResource) Schema(_ context.Context, req resource.SchemaReques
 				},
 			},
 			"cidr": schema.StringAttribute{
-				Required: true,
+				Description: "Specifies the subnetwork's address and mask prefix length in CIDR notation, for example 10.0.8.0/24, 192.168.10.8/30.",
+				Required:    true,
 			},
 			"created_at": schema.StringAttribute{
 				Computed: true,

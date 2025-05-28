@@ -45,9 +45,11 @@ func (p *bx2cloudProvider) Metadata(ctx context.Context, req provider.MetadataRe
 
 func (p *bx2cloudProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Interact with bx2cloud.",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
-				Required: true,
+				Description: "The host and port of the bx2cloud API. May also be provided via BX2CLOUD_HOST environment variable.",
+				Required:    true,
 			},
 		},
 	}
