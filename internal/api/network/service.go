@@ -2,29 +2,45 @@ package network
 
 import (
 	"context"
+	"fmt"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type NetworkService struct {
 	pb.UnimplementedNetworkServiceServer
-	repository networkRepository
+	repository           shared.NetworkRepository
+	subnetworkRepository shared.SubnetworkRepository
 }
 
-func NewNetworkService(repository networkRepository) *NetworkService {
+func NewNetworkService(repository shared.NetworkRepository, subnetworkRepository shared.SubnetworkRepository) *NetworkService {
 	return &NetworkService{
-		repository: repository,
+		repository:           repository,
+		subnetworkRepository: subnetworkRepository,
 	}
 }
 
 func (s *NetworkService) Get(ctx context.Context, req *pb.NetworkIdentificationRequest) (*pb.Network, error) {
-	return s.repository.get(req.Id)
+	return s.repository.Get(req.Id)
 }
 
 func (s *NetworkService) Delete(ctx context.Context, req *pb.NetworkIdentificationRequest) (*emptypb.Empty, error) {
-	err := s.repository.delete(req.Id)
+	subnetworks, errors := s.subnetworkRepository.GetAllByNetworkId(req.Id, ctx)
+
+	select {
+	case _, ok := <-subnetworks:
+		if ok {
+			// TODO: Move to sentinel errors
+			return nil, fmt.Errorf("some subnetworks still depend on the network with id %d", req.Id)
+		}
+	case err := <-errors:
+		return nil, err
+	}
+
+	err := s.repository.Delete(req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +53,7 @@ func (s *NetworkService) Create(ctx context.Context, req *pb.NetworkCreationRequ
 		InternetAccess: req.InternetAccess,
 	}
 
-	returnedNetwork, err := s.repository.add(newNetwork)
+	returnedNetwork, err := s.repository.Add(newNetwork)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +62,7 @@ func (s *NetworkService) Create(ctx context.Context, req *pb.NetworkCreationRequ
 }
 
 func (s *NetworkService) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb.Network, error) {
-	network, err := s.repository.update(req.Identification.Id, func(sn *pb.Network) {
+	network, err := s.repository.Update(req.Identification.Id, func(sn *pb.Network) {
 		sn.InternetAccess = req.Update.InternetAccess
 	})
 
@@ -58,7 +74,7 @@ func (s *NetworkService) Update(ctx context.Context, req *pb.NetworkUpdateReques
 }
 
 func (s *NetworkService) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Network]) error {
-	networks, errors := s.repository.getAll(stream.Context())
+	networks, errors := s.repository.GetAll(stream.Context())
 
 	for {
 		select {

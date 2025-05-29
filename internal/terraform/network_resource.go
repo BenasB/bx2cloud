@@ -142,8 +142,8 @@ func (r *networkResource) Read(ctx context.Context, req resource.ReadRequest, re
 	network, err := r.client.Get(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading bx2cloud network",
-			"Could not read bx2cloud network id "+state.Id.ValueString()+": "+err.Error(),
+			"Error reading network",
+			"Could not read network id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -231,8 +231,8 @@ func (r *networkResource) Delete(ctx context.Context, req resource.DeleteRequest
 	_, err = r.client.Delete(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting bx2cloud network",
-			"Could not delete bx2cloud network id "+state.Id.ValueString()+": "+err.Error(),
+			"Error deleting network",
+			"Could not delete network id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}

@@ -26,7 +26,7 @@ func printNetwork(w *tabwriter.Writer, network *pb.Network) {
 
 func newSubnetworkWriter() *tabwriter.Writer {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "id\tcidr\n")
+	fmt.Fprintf(w, "id\tnetwork_id\tcidr\n")
 	return w
 }
 
@@ -38,7 +38,7 @@ func printSubnetwork(w *tabwriter.Writer, subnetwork *pb.Subnetwork) {
 		byte(subnetwork.Address),
 		subnetwork.PrefixLength)
 
-	fmt.Fprintf(w, "%d\t%s\n", subnetwork.Id, cidr)
+	fmt.Fprintf(w, "%d\t%d\t%s\n", subnetwork.Id, subnetwork.NetworkId, cidr)
 }
 
 func networkList(client pb.NetworkServiceClient) error {
@@ -217,6 +217,7 @@ func subnetworkCreate(client pb.SubnetworkServiceClient, yamlBytes []byte) error
 	prefixLength, _ := ipNet.Mask.Size()
 
 	req := &pb.SubnetworkCreationRequest{
+		NetworkId:    input.NetworkId,
 		Address:      address,
 		PrefixLength: uint32(prefixLength),
 	}

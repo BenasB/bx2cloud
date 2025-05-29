@@ -7,26 +7,19 @@ import (
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/id"
+	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type subnetworkRepository interface {
-	get(id uint32) (*pb.Subnetwork, error)
-	getAll(ctx context.Context) (<-chan *pb.Subnetwork, <-chan error)
-	add(subnetwork *pb.Subnetwork) (*pb.Subnetwork, error)
-	delete(id uint32) error
-	update(id uint32, updateFn func(*pb.Subnetwork)) (*pb.Subnetwork, error)
-}
-
-var _ subnetworkRepository = &memorySubnetworkRepository{}
+var _ shared.SubnetworkRepository = &memorySubnetworkRepository{}
 
 // Caution: not thread safe
 type memorySubnetworkRepository struct {
 	subnetworks []*pb.Subnetwork
 }
 
-func NewMemorySubnetworkRepository(subnetworks []*pb.Subnetwork) subnetworkRepository {
+func NewMemorySubnetworkRepository(subnetworks []*pb.Subnetwork) shared.SubnetworkRepository {
 	sns := make([]*pb.Subnetwork, len(subnetworks))
 	for i, subnetwork := range subnetworks {
 		sns[i] = proto.Clone(subnetwork).(*pb.Subnetwork)
@@ -37,17 +30,17 @@ func NewMemorySubnetworkRepository(subnetworks []*pb.Subnetwork) subnetworkRepos
 	}
 }
 
-func (r *memorySubnetworkRepository) get(id uint32) (*pb.Subnetwork, error) {
+func (r *memorySubnetworkRepository) Get(id uint32) (*pb.Subnetwork, error) {
 	for _, subnetwork := range r.subnetworks {
 		if subnetwork.Id == id {
 			return subnetwork, nil
 		}
 	}
 
-	return nil, fmt.Errorf("could not find subnetwork")
+	return nil, fmt.Errorf("could not find subnetwork with id %d", id)
 }
 
-func (r *memorySubnetworkRepository) getAll(ctx context.Context) (<-chan *pb.Subnetwork, <-chan error) {
+func (r *memorySubnetworkRepository) GetAll(ctx context.Context) (<-chan *pb.Subnetwork, <-chan error) {
 	results := make(chan *pb.Subnetwork, 0)
 	errChan := make(chan error, 1)
 
@@ -68,7 +61,39 @@ func (r *memorySubnetworkRepository) getAll(ctx context.Context) (<-chan *pb.Sub
 	return results, errChan
 }
 
-func (r *memorySubnetworkRepository) add(subnetwork *pb.Subnetwork) (*pb.Subnetwork, error) {
+func (r *memorySubnetworkRepository) GetAllByNetworkId(id uint32, ctx context.Context) (<-chan *pb.Subnetwork, <-chan error) {
+	results := make(chan *pb.Subnetwork, 0)
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(results)
+		defer close(errChan)
+
+		for _, subnetwork := range r.subnetworks {
+			select {
+			case <-ctx.Done():
+				errChan <- ctx.Err()
+				return
+			default:
+			}
+
+			if subnetwork.NetworkId != id {
+				continue
+			}
+
+			select {
+			case results <- subnetwork:
+			case <-ctx.Done():
+				errChan <- ctx.Err()
+				return
+			}
+		}
+	}()
+
+	return results, errChan
+}
+
+func (r *memorySubnetworkRepository) Add(subnetwork *pb.Subnetwork) (*pb.Subnetwork, error) {
 	//newSubnetwork := *subnetwork
 	newSubnetwork := proto.Clone(subnetwork).(*pb.Subnetwork)
 	newSubnetwork.Id = id.NextId("subnetwork")
@@ -77,7 +102,7 @@ func (r *memorySubnetworkRepository) add(subnetwork *pb.Subnetwork) (*pb.Subnetw
 	return newSubnetwork, nil
 }
 
-func (r *memorySubnetworkRepository) delete(id uint32) error {
+func (r *memorySubnetworkRepository) Delete(id uint32) error {
 	for i, subnetwork := range r.subnetworks {
 		if subnetwork.Id == id {
 			r.subnetworks = append(r.subnetworks[:i], r.subnetworks[i+1:]...)
@@ -85,10 +110,10 @@ func (r *memorySubnetworkRepository) delete(id uint32) error {
 		}
 	}
 
-	return fmt.Errorf("could not find subnetwork")
+	return fmt.Errorf("could not find subnetwork with id %d", id)
 }
 
-func (r *memorySubnetworkRepository) update(id uint32, updateFn func(*pb.Subnetwork)) (*pb.Subnetwork, error) {
+func (r *memorySubnetworkRepository) Update(id uint32, updateFn func(*pb.Subnetwork)) (*pb.Subnetwork, error) {
 	for _, subnetwork := range r.subnetworks {
 		if subnetwork.Id == id {
 			updateFn(subnetwork)
@@ -96,5 +121,5 @@ func (r *memorySubnetworkRepository) update(id uint32, updateFn func(*pb.Subnetw
 		}
 	}
 
-	return nil, fmt.Errorf("could not find subnetwork")
+	return nil, fmt.Errorf("could not find subnetwork with id %d", id)
 }

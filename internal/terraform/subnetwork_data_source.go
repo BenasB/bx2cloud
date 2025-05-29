@@ -28,6 +28,7 @@ type subnetworkDataSource struct {
 
 type subnetworkDataSourceModel struct {
 	Id        types.String `tfsdk:"id"`
+	NetworkId types.String `tfsdk:"network_id"`
 	Cidr      types.String `tfsdk:"cidr"`
 	CreatedAt types.String `tfsdk:"created_at"`
 }
@@ -59,6 +60,10 @@ func (d *subnetworkDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Required: true,
+			},
+			"network_id": schema.StringAttribute{
+				Description: "The network this subnetwork is considered a part of.",
+				Computed:    true,
 			},
 			"cidr": schema.StringAttribute{
 				Description: "Specifies the subnetwork's address and mask prefix length in CIDR notation. for example 10.0.8.0/24, 192.168.10.8/30.",
@@ -96,8 +101,8 @@ func (d *subnetworkDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	subnetwork, err := d.client.Get(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading bx2cloud subnetwork",
-			"Could not read bx2cloud subnetwork id "+state.Id.ValueString()+": "+err.Error(),
+			"Error reading subnetwork",
+			"Could not read subnetwork id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -110,6 +115,7 @@ func (d *subnetworkDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		subnetwork.PrefixLength)
 
 	state.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
+	state.NetworkId = types.StringValue(strconv.FormatInt(int64(subnetwork.NetworkId), 10))
 	state.Cidr = types.StringValue(cidr)
 	state.CreatedAt = types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339))
 

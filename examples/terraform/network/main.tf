@@ -15,5 +15,6 @@ resource "bx2cloud_network" "my_network" {
 }
 
 resource "bx2cloud_subnetwork" "my_subnetwork" {
-  cidr = "10.0.44.0/24"
+  network_id = bx2cloud_network.my_network.id
+  cidr       = "10.0.44.0/24"
 }

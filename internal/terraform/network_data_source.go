@@ -96,8 +96,8 @@ func (d *networkDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	network, err := d.client.Get(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading bx2cloud network",
-			"Could not read bx2cloud network id "+state.Id.ValueString()+": "+err.Error(),
+			"Error reading network",
+			"Could not read network id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}

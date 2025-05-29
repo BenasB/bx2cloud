@@ -4,27 +4,30 @@ import (
 	"context"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type SubnetworkService struct {
 	pb.UnimplementedSubnetworkServiceServer
-	repository subnetworkRepository
+	repository        shared.SubnetworkRepository
+	networkRepository shared.NetworkRepository
 }
 
-func NewSubnetworkService(repository subnetworkRepository) *SubnetworkService {
+func NewSubnetworkService(subnetworkRepository shared.SubnetworkRepository, networkRepository shared.NetworkRepository) *SubnetworkService {
 	return &SubnetworkService{
-		repository: repository,
+		repository:        subnetworkRepository,
+		networkRepository: networkRepository,
 	}
 }
 
 func (s *SubnetworkService) Get(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*pb.Subnetwork, error) {
-	return s.repository.get(req.Id)
+	return s.repository.Get(req.Id)
 }
 
 func (s *SubnetworkService) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
-	err := s.repository.delete(req.Id)
+	err := s.repository.Delete(req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -33,12 +36,17 @@ func (s *SubnetworkService) Delete(ctx context.Context, req *pb.SubnetworkIdenti
 }
 
 func (s *SubnetworkService) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*pb.Subnetwork, error) {
+	if _, err := s.networkRepository.Get(req.NetworkId); err != nil {
+		return nil, err
+	}
+
 	newSubnetwork := &pb.Subnetwork{
+		NetworkId:    req.NetworkId,
 		Address:      req.Address,
 		PrefixLength: req.PrefixLength,
 	}
 
-	returnedSubnetwork, err := s.repository.add(newSubnetwork)
+	returnedSubnetwork, err := s.repository.Add(newSubnetwork)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +55,7 @@ func (s *SubnetworkService) Create(ctx context.Context, req *pb.SubnetworkCreati
 }
 
 func (s *SubnetworkService) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*pb.Subnetwork, error) {
-	subnetwork, err := s.repository.update(req.Identification.Id, func(sn *pb.Subnetwork) {
+	subnetwork, err := s.repository.Update(req.Identification.Id, func(sn *pb.Subnetwork) {
 		sn.Address = req.Update.Address
 		sn.PrefixLength = req.Update.PrefixLength
 	})
@@ -60,7 +68,7 @@ func (s *SubnetworkService) Update(ctx context.Context, req *pb.SubnetworkUpdate
 }
 
 func (s *SubnetworkService) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Subnetwork]) error {
-	subnetworks, errors := s.repository.getAll(stream.Context())
+	subnetworks, errors := s.repository.GetAll(stream.Context())
 
 	for {
 		select {

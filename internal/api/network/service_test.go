@@ -1,15 +1,16 @@
 package network_test
 
 import (
-	"context"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/network"
+	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -22,30 +23,16 @@ var testNetworks = []*pb.Network{
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Hour)),
 	},
 	&pb.Network{
-		Id:             2,
+		Id:             42,
 		InternetAccess: true,
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Minute)),
 	},
 }
 
-type mockStream[T any] struct {
-	grpc.ServerStream
-	SentItems []T
-	ctx       context.Context
-}
-
-func (s *mockStream[T]) Send(item T) error {
-	s.SentItems = append(s.SentItems, item)
-	return nil
-}
-
-func (s *mockStream[T]) Context() context.Context {
-	return s.ctx
-}
-
 func TestNetwork_Create(t *testing.T) {
 	repository := network.NewMemoryNetworkRepository(make([]*pb.Network, 0))
-	service := network.NewNetworkService(repository)
+	subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
+	service := network.NewNetworkService(repository, subnetworkRepository)
 	req := &pb.NetworkCreationRequest{
 		InternetAccess: true,
 	}
@@ -59,7 +46,8 @@ func TestNetwork_Create(t *testing.T) {
 func TestNetwork_Delete(t *testing.T) {
 	for _, tt := range testNetworks {
 		repository := network.NewMemoryNetworkRepository(testNetworks)
-		service := network.NewNetworkService(repository)
+		subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
+		service := network.NewNetworkService(repository, subnetworkRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
@@ -72,10 +60,39 @@ func TestNetwork_Delete(t *testing.T) {
 	}
 }
 
+func TestNetwork_Delete_SubnetworksExist(t *testing.T) {
+	const subnetworksPerNetwork = 3
+	testSubnetworks := make([]*pb.Subnetwork, len(testNetworks)*subnetworksPerNetwork)
+	for i, n := range testNetworks {
+		for j := 0; j < subnetworksPerNetwork; j++ {
+			testSubnetworks[i*subnetworksPerNetwork+j] = &pb.Subnetwork{
+				Id:        uint32(i*subnetworksPerNetwork + j),
+				NetworkId: n.Id,
+			}
+		}
+	}
+
+	for _, tt := range testNetworks {
+		repository := network.NewMemoryNetworkRepository(testNetworks)
+		subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
+		service := network.NewNetworkService(repository, subnetworkRepository)
+
+		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
+			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
+				Id: tt.Id,
+			})
+			if err == nil || !strings.Contains(err.Error(), "subnetworks still depend") {
+				t.Error("Network was deleted even though it shouldn't have because a subnetwork depended on it")
+			}
+		})
+	}
+}
+
 func TestNetwork_Get(t *testing.T) {
 	for _, tt := range testNetworks {
 		repository := network.NewMemoryNetworkRepository(testNetworks)
-		service := network.NewNetworkService(repository)
+		subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
+		service := network.NewNetworkService(repository, subnetworkRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.NetworkIdentificationRequest{
@@ -92,12 +109,11 @@ func TestNetwork_Get(t *testing.T) {
 }
 
 func TestNetwork_List(t *testing.T) {
-	stream := &mockStream[*pb.Network]{
-		ctx: t.Context(),
-	}
+	stream := shared.NewMockStream[*pb.Network](t.Context())
 
 	repository := network.NewMemoryNetworkRepository(testNetworks)
-	service := network.NewNetworkService(repository)
+	subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
+	service := network.NewNetworkService(repository, subnetworkRepository)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testNetworks) != len(stream.SentItems) {

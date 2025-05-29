@@ -34,9 +34,10 @@ func TestAccNetworkDataSource(t *testing.T) {
 
 		Steps: []resource.TestStep{
 			{
-				Config: providerConfig + "data \"bx2cloud_network\" \"test\" {\n" +
-					fmt.Sprintf("id = %d\n", network.Id) +
-					"}",
+				Config: fmt.Sprintf(providerConfig+`
+data "bx2cloud_network" "test" {
+  id = %d
+}`, network.Id),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.bx2cloud_network.test", "internet_access", strconv.FormatBool(createReq.InternetAccess)),
 				),

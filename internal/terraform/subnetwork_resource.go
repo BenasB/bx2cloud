@@ -32,6 +32,7 @@ type subnetworkResource struct {
 
 type subnetworkResourceModel struct {
 	Id        types.String `tfsdk:"id"`
+	NetworkId types.String `tfsdk:"network_id"`
 	Cidr      types.String `tfsdk:"cidr"`
 	CreatedAt types.String `tfsdk:"created_at"`
 	UpdatedAt types.String `tfsdk:"updated_at"`
@@ -66,6 +67,13 @@ func (r *subnetworkResource) Schema(_ context.Context, req resource.SchemaReques
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"network_id": schema.StringAttribute{
+				Description: "The network this subnetwork is considered a part of.",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"cidr": schema.StringAttribute{
@@ -115,7 +123,18 @@ func (r *subnetworkResource) Create(ctx context.Context, req resource.CreateRequ
 	address := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
 	prefixLength, _ := ipNet.Mask.Size()
 
+	networkId, err := strconv.ParseInt(plan.NetworkId.ValueString(), 10, 32)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("network_id"),
+			"Invalid network_id Format",
+			fmt.Sprintf("Could not parse network_id into an integer: %v", err),
+		)
+		return
+	}
+
 	clientReq := &pb.SubnetworkCreationRequest{
+		NetworkId:    uint32(networkId),
 		Address:      address,
 		PrefixLength: uint32(prefixLength),
 	}
@@ -137,6 +156,7 @@ func (r *subnetworkResource) Create(ctx context.Context, req resource.CreateRequ
 		subnetwork.PrefixLength)
 
 	plan.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
+	plan.NetworkId = types.StringValue(strconv.FormatInt(int64(subnetwork.NetworkId), 10))
 	plan.Cidr = types.StringValue(cidr)
 	plan.CreatedAt = types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339))
 	plan.UpdatedAt = types.StringValue(time.Now().Format(time.RFC3339))
@@ -173,8 +193,8 @@ func (r *subnetworkResource) Read(ctx context.Context, req resource.ReadRequest,
 	subnetwork, err := r.client.Get(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading bx2cloud subnetwork",
-			"Could not read bx2cloud subnetwork id "+state.Id.ValueString()+": "+err.Error(),
+			"Error reading subnetwork",
+			"Could not read subnetwork id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -187,6 +207,7 @@ func (r *subnetworkResource) Read(ctx context.Context, req resource.ReadRequest,
 		subnetwork.PrefixLength)
 
 	state.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
+	state.NetworkId = types.StringValue(strconv.FormatInt(int64(subnetwork.NetworkId), 10))
 	state.Cidr = types.StringValue(cidr)
 	state.CreatedAt = types.StringValue(subnetwork.CreatedAt.AsTime().Format(time.RFC3339))
 
@@ -264,6 +285,7 @@ func (r *subnetworkResource) Update(ctx context.Context, req resource.UpdateRequ
 		subnetwork.PrefixLength)
 
 	plan.Id = types.StringValue(strconv.FormatInt(int64(subnetwork.Id), 10))
+	plan.NetworkId = types.StringValue(strconv.FormatInt(int64(subnetwork.NetworkId), 10))
 	plan.Cidr = types.StringValue(cidr)
 	plan.UpdatedAt = types.StringValue(time.Now().Format(time.RFC3339))
 
@@ -299,8 +321,8 @@ func (r *subnetworkResource) Delete(ctx context.Context, req resource.DeleteRequ
 	_, err = r.client.Delete(ctx, clientReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting bx2cloud subnetwork",
-			"Could not delete bx2cloud subnetwork id "+state.Id.ValueString()+": "+err.Error(),
+			"Error deleting subnetwork",
+			"Could not delete subnetwork id "+state.Id.ValueString()+": "+err.Error(),
 		)
 		return
 	}

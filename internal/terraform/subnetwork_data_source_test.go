@@ -10,22 +10,40 @@ import (
 )
 
 func TestAccSubnetworkDataSource(t *testing.T) {
-	createReq := &pb.SubnetworkCreationRequest{
+	networkCreateReq := &pb.NetworkCreationRequest{
+		InternetAccess: true,
+	}
+
+	network, err := grpcClients.Network.Create(t.Context(), networkCreateReq)
+	if err != nil {
+		t.Fatalf("Failed to create a network before running the terraform test: %v", err)
+	}
+
+	subnetworkCreateReq := &pb.SubnetworkCreationRequest{
+		NetworkId:    network.Id,
 		Address:      3232238088, // 192.168.10.8
 		PrefixLength: 30,
 	}
-	subnetwork, err := grpcClients.Subnetwork.Create(t.Context(), createReq)
+	subnetwork, err := grpcClients.Subnetwork.Create(t.Context(), subnetworkCreateReq)
 	if err != nil {
 		t.Fatalf("Failed to create a subnetwork before running the terraform test: %v", err)
 	}
 
 	t.Cleanup(func() {
-		deleteReq := &pb.SubnetworkIdentificationRequest{
+		subnetworkDeleteReq := &pb.SubnetworkIdentificationRequest{
 			Id: subnetwork.Id,
 		}
-		_, err = grpcClients.Subnetwork.Delete(context.Background(), deleteReq)
+		_, err = grpcClients.Subnetwork.Delete(context.Background(), subnetworkDeleteReq)
 		if err != nil {
 			t.Fatalf("Failed to delete subnetwork '%d' after running the terraform test: %v", subnetwork.Id, err)
+		}
+
+		networkDeleteReq := &pb.NetworkIdentificationRequest{
+			Id: network.Id,
+		}
+		_, err = grpcClients.Network.Delete(context.Background(), networkDeleteReq)
+		if err != nil {
+			t.Fatalf("Failed to delete network '%d' after running the terraform test: %v", network.Id, err)
 		}
 	})
 
@@ -34,9 +52,10 @@ func TestAccSubnetworkDataSource(t *testing.T) {
 
 		Steps: []resource.TestStep{
 			{
-				Config: providerConfig + "data \"bx2cloud_subnetwork\" \"test\" {\n" +
-					fmt.Sprintf("id = %d\n", subnetwork.Id) +
-					"}",
+				Config: fmt.Sprintf(providerConfig+`
+data "bx2cloud_subnetwork" "test" {
+  id = %d
+}`, subnetwork.Id),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.bx2cloud_subnetwork.test", "cidr", "192.168.10.8/30"),
 				),

@@ -382,9 +382,10 @@ func (x *SubnetworkUpdateRequest) GetUpdate() *SubnetworkCreationRequest {
 type Subnetwork struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Address       uint32                 `protobuf:"fixed32,2,opt,name=address,proto3" json:"address,omitempty"`
-	PrefixLength  uint32                 `protobuf:"fixed32,3,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	NetworkId     uint32                 `protobuf:"varint,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	Address       uint32                 `protobuf:"fixed32,3,opt,name=address,proto3" json:"address,omitempty"`
+	PrefixLength  uint32                 `protobuf:"fixed32,4,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -422,6 +423,13 @@ func (*Subnetwork) Descriptor() ([]byte, []int) {
 func (x *Subnetwork) GetId() uint32 {
 	if x != nil {
 		return x.Id
+	}
+	return 0
+}
+
+func (x *Subnetwork) GetNetworkId() uint32 {
+	if x != nil {
+		return x.NetworkId
 	}
 	return 0
 }
@@ -472,13 +480,15 @@ const file_api_proto_rawDesc = "" +
 	"\rprefix_length\x18\x03 \x01(\aR\fprefixLength\"\xa9\x01\n" +
 	"\x17SubnetworkUpdateRequest\x12Q\n" +
 	"\x0eidentification\x18\x01 \x01(\v2).bx2cloud.SubnetworkIdentificationRequestR\x0eidentification\x12;\n" +
-	"\x06update\x18\x02 \x01(\v2#.bx2cloud.SubnetworkCreationRequestR\x06update\"\x95\x01\n" +
+	"\x06update\x18\x02 \x01(\v2#.bx2cloud.SubnetworkCreationRequestR\x06update\"\xb4\x01\n" +
 	"\n" +
 	"Subnetwork\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\rR\x02id\x12\x18\n" +
-	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
-	"\rprefix_length\x18\x03 \x01(\aR\fprefixLength\x128\n" +
-	"\tcreatedAt\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt2\xcd\x02\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\x12\x1d\n" +
+	"\n" +
+	"network_id\x18\x02 \x01(\rR\tnetworkId\x12\x18\n" +
+	"\aaddress\x18\x03 \x01(\aR\aaddress\x12#\n" +
+	"\rprefix_length\x18\x04 \x01(\aR\fprefixLength\x128\n" +
+	"\tcreatedAt\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt2\xcd\x02\n" +
 	"\x0eNetworkService\x12@\n" +
 	"\x03Get\x12&.bx2cloud.NetworkIdentificationRequest\x1a\x11.bx2cloud.Network\x123\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x11.bx2cloud.Network0\x01\x12=\n" +
