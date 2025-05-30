@@ -5,32 +5,31 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/id"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var _ shared.SubnetworkRepository = &memorySubnetworkRepository{}
+var _ shared.SubnetworkRepository = &memoryRepository{}
 
 // Caution: not thread safe
-type memorySubnetworkRepository struct {
-	subnetworks []*pb.Subnetwork
+type memoryRepository struct {
+	subnetworks []*shared.SubnetworkModel
 }
 
-func NewMemorySubnetworkRepository(subnetworks []*pb.Subnetwork) shared.SubnetworkRepository {
-	sns := make([]*pb.Subnetwork, len(subnetworks))
+func NewMemoryRepository(subnetworks []*shared.SubnetworkModel) shared.SubnetworkRepository {
+	sns := make([]*shared.SubnetworkModel, len(subnetworks))
 	for i, subnetwork := range subnetworks {
-		sns[i] = proto.Clone(subnetwork).(*pb.Subnetwork)
+		sns[i] = proto.Clone(subnetwork).(*shared.SubnetworkModel)
 	}
 
-	return &memorySubnetworkRepository{
+	return &memoryRepository{
 		subnetworks: sns,
 	}
 }
 
-func (r *memorySubnetworkRepository) Get(id uint32) (*pb.Subnetwork, error) {
+func (r *memoryRepository) Get(id uint32) (*shared.SubnetworkModel, error) {
 	for _, subnetwork := range r.subnetworks {
 		if subnetwork.Id == id {
 			return subnetwork, nil
@@ -40,8 +39,8 @@ func (r *memorySubnetworkRepository) Get(id uint32) (*pb.Subnetwork, error) {
 	return nil, fmt.Errorf("could not find subnetwork with id %d", id)
 }
 
-func (r *memorySubnetworkRepository) GetAll(ctx context.Context) (<-chan *pb.Subnetwork, <-chan error) {
-	results := make(chan *pb.Subnetwork, 0)
+func (r *memoryRepository) GetAll(ctx context.Context) (<-chan *shared.SubnetworkModel, <-chan error) {
+	results := make(chan *shared.SubnetworkModel, 0)
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -61,8 +60,8 @@ func (r *memorySubnetworkRepository) GetAll(ctx context.Context) (<-chan *pb.Sub
 	return results, errChan
 }
 
-func (r *memorySubnetworkRepository) GetAllByNetworkId(id uint32, ctx context.Context) (<-chan *pb.Subnetwork, <-chan error) {
-	results := make(chan *pb.Subnetwork, 0)
+func (r *memoryRepository) GetAllByNetworkId(id uint32, ctx context.Context) (<-chan *shared.SubnetworkModel, <-chan error) {
+	results := make(chan *shared.SubnetworkModel, 0)
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -93,16 +92,16 @@ func (r *memorySubnetworkRepository) GetAllByNetworkId(id uint32, ctx context.Co
 	return results, errChan
 }
 
-func (r *memorySubnetworkRepository) Add(subnetwork *pb.Subnetwork) (*pb.Subnetwork, error) {
+func (r *memoryRepository) Add(subnetwork *shared.SubnetworkModel) (*shared.SubnetworkModel, error) {
 	//newSubnetwork := *subnetwork
-	newSubnetwork := proto.Clone(subnetwork).(*pb.Subnetwork)
+	newSubnetwork := proto.Clone(subnetwork).(*shared.SubnetworkModel)
 	newSubnetwork.Id = id.NextId("subnetwork")
 	newSubnetwork.CreatedAt = timestamppb.New(time.Now())
 	r.subnetworks = append(r.subnetworks, newSubnetwork)
 	return newSubnetwork, nil
 }
 
-func (r *memorySubnetworkRepository) Delete(id uint32) error {
+func (r *memoryRepository) Delete(id uint32) error {
 	for i, subnetwork := range r.subnetworks {
 		if subnetwork.Id == id {
 			r.subnetworks = append(r.subnetworks[:i], r.subnetworks[i+1:]...)
@@ -113,7 +112,7 @@ func (r *memorySubnetworkRepository) Delete(id uint32) error {
 	return fmt.Errorf("could not find subnetwork with id %d", id)
 }
 
-func (r *memorySubnetworkRepository) Update(id uint32, updateFn func(*pb.Subnetwork)) (*pb.Subnetwork, error) {
+func (r *memoryRepository) Update(id uint32, updateFn func(*shared.SubnetworkModel)) (*shared.SubnetworkModel, error) {
 	for _, subnetwork := range r.subnetworks {
 		if subnetwork.Id == id {
 			updateFn(subnetwork)

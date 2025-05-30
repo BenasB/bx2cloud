@@ -17,14 +17,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var testSubnetworks = []*pb.Subnetwork{
-	&pb.Subnetwork{
+var testSubnetworks = []*shared.SubnetworkModel{
+	&shared.SubnetworkModel{
 		Id:           1,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 0, 0}),
 		PrefixLength: 24,
 		CreatedAt:    timestamppb.New(time.Now().Add(-time.Hour)),
 	},
-	&pb.Subnetwork{
+	&shared.SubnetworkModel{
 		Id:           2,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 1, 0}),
 		PrefixLength: 24,
@@ -33,14 +33,14 @@ var testSubnetworks = []*pb.Subnetwork{
 }
 
 func TestSubnetwork_Create(t *testing.T) {
-	repository := subnetwork.NewMemorySubnetworkRepository(make([]*pb.Subnetwork, 0))
-	testNetwork := &pb.Network{
+	repository := subnetwork.NewMemoryRepository(nil)
+	testNetwork := &shared.NetworkModel{
 		Id:             42,
 		InternetAccess: true,
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Hour)),
 	}
-	networkRepository := network.NewMemoryNetworkRepository([]*pb.Network{testNetwork})
-	service := subnetwork.NewSubnetworkService(repository, networkRepository)
+	networkRepository := network.NewMemoryRepository([]*shared.NetworkModel{testNetwork})
+	service := subnetwork.NewService(repository, networkRepository)
 
 	req := &pb.SubnetworkCreationRequest{
 		NetworkId:    testNetwork.Id,
@@ -55,9 +55,9 @@ func TestSubnetwork_Create(t *testing.T) {
 }
 
 func TestSubnetwork_Create_NetworkNotFound(t *testing.T) {
-	repository := subnetwork.NewMemorySubnetworkRepository(make([]*pb.Subnetwork, 0))
-	networkRepository := network.NewMemoryNetworkRepository(nil)
-	service := subnetwork.NewSubnetworkService(repository, networkRepository)
+	repository := subnetwork.NewMemoryRepository(nil)
+	networkRepository := network.NewMemoryRepository(nil)
+	service := subnetwork.NewService(repository, networkRepository)
 	req := &pb.SubnetworkCreationRequest{
 		NetworkId:    0,
 		Address:      binary.BigEndian.Uint32([]byte{192, 168, 0, 0}),
@@ -72,9 +72,9 @@ func TestSubnetwork_Create_NetworkNotFound(t *testing.T) {
 
 func TestSubnetwork_Delete(t *testing.T) {
 	for _, tt := range testSubnetworks {
-		repository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
-		networkRepository := network.NewMemoryNetworkRepository(nil)
-		service := subnetwork.NewSubnetworkService(repository, networkRepository)
+		repository := subnetwork.NewMemoryRepository(testSubnetworks)
+		networkRepository := network.NewMemoryRepository(nil)
+		service := subnetwork.NewService(repository, networkRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -89,9 +89,9 @@ func TestSubnetwork_Delete(t *testing.T) {
 
 func TestSubnetwork_Get(t *testing.T) {
 	for _, tt := range testSubnetworks {
-		repository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
-		networkRepository := network.NewMemoryNetworkRepository(nil)
-		service := subnetwork.NewSubnetworkService(repository, networkRepository)
+		repository := subnetwork.NewMemoryRepository(testSubnetworks)
+		networkRepository := network.NewMemoryRepository(nil)
+		service := subnetwork.NewService(repository, networkRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -108,11 +108,11 @@ func TestSubnetwork_Get(t *testing.T) {
 }
 
 func TestSubnetwork_List(t *testing.T) {
-	stream := shared.NewMockStream[*pb.Subnetwork](t.Context())
+	stream := shared.NewMockStream[*shared.SubnetworkModel](t.Context())
 
-	repository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
-	networkRepository := network.NewMemoryNetworkRepository(nil)
-	service := subnetwork.NewSubnetworkService(repository, networkRepository)
+	repository := subnetwork.NewMemoryRepository(testSubnetworks)
+	networkRepository := network.NewMemoryRepository(nil)
+	service := subnetwork.NewService(repository, networkRepository)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testSubnetworks) != len(stream.SentItems) {

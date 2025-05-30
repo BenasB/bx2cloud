@@ -12,6 +12,7 @@ import (
 	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/id"
 	"github.com/BenasB/bx2cloud/internal/api/network"
+	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -299,7 +300,7 @@ func main() {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 
-	var sampleNetworks = []*pb.Network{
+	var sampleNetworks = []*shared.NetworkModel{
 		&pb.Network{
 			Id:             id.NextId("network"),
 			InternetAccess: false,
@@ -316,9 +317,9 @@ func main() {
 			CreatedAt:      timestamppb.New(time.Now().Add(-time.Minute * 30)),
 		},
 	}
-	networkRepository := network.NewMemoryNetworkRepository(sampleNetworks)
+	networkRepository := network.NewMemoryRepository(sampleNetworks)
 
-	var sampleSubnetworks = []*pb.Subnetwork{
+	var sampleSubnetworks = []*shared.SubnetworkModel{
 		&pb.Subnetwork{
 			Id:           id.NextId("subnetwork"),
 			NetworkId:    sampleNetworks[0].Id,
@@ -341,10 +342,10 @@ func main() {
 			CreatedAt:    timestamppb.New(time.Now().Add(-time.Minute * 29)),
 		},
 	}
-	subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(sampleSubnetworks)
+	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
 
-	pb.RegisterNetworkServiceServer(grpcServer, network.NewNetworkService(networkRepository, subnetworkRepository))
-	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewSubnetworkService(subnetworkRepository, networkRepository))
+	pb.RegisterNetworkServiceServer(grpcServer, network.NewkService(networkRepository, subnetworkRepository))
+	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository))
 
 	log.Printf("Starting server on %s\n", address)
 	if err := grpcServer.Serve(lis); err != nil {

@@ -16,13 +16,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var testNetworks = []*pb.Network{
-	&pb.Network{
+var testNetworks = []*shared.NetworkModel{
+	&shared.NetworkModel{
 		Id:             1,
 		InternetAccess: false,
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Hour)),
 	},
-	&pb.Network{
+	&shared.NetworkModel{
 		Id:             42,
 		InternetAccess: true,
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Minute)),
@@ -30,9 +30,9 @@ var testNetworks = []*pb.Network{
 }
 
 func TestNetwork_Create(t *testing.T) {
-	repository := network.NewMemoryNetworkRepository(make([]*pb.Network, 0))
-	subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
-	service := network.NewNetworkService(repository, subnetworkRepository)
+	repository := network.NewMemoryRepository(nil)
+	subnetworkRepository := subnetwork.NewMemoryRepository(nil)
+	service := network.NewkService(repository, subnetworkRepository)
 	req := &pb.NetworkCreationRequest{
 		InternetAccess: true,
 	}
@@ -45,9 +45,9 @@ func TestNetwork_Create(t *testing.T) {
 
 func TestNetwork_Delete(t *testing.T) {
 	for _, tt := range testNetworks {
-		repository := network.NewMemoryNetworkRepository(testNetworks)
-		subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
-		service := network.NewNetworkService(repository, subnetworkRepository)
+		repository := network.NewMemoryRepository(testNetworks)
+		subnetworkRepository := subnetwork.NewMemoryRepository(nil)
+		service := network.NewkService(repository, subnetworkRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
@@ -73,9 +73,9 @@ func TestNetwork_Delete_SubnetworksExist(t *testing.T) {
 	}
 
 	for _, tt := range testNetworks {
-		repository := network.NewMemoryNetworkRepository(testNetworks)
-		subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(testSubnetworks)
-		service := network.NewNetworkService(repository, subnetworkRepository)
+		repository := network.NewMemoryRepository(testNetworks)
+		subnetworkRepository := subnetwork.NewMemoryRepository(testSubnetworks)
+		service := network.NewkService(repository, subnetworkRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
@@ -90,9 +90,9 @@ func TestNetwork_Delete_SubnetworksExist(t *testing.T) {
 
 func TestNetwork_Get(t *testing.T) {
 	for _, tt := range testNetworks {
-		repository := network.NewMemoryNetworkRepository(testNetworks)
-		subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
-		service := network.NewNetworkService(repository, subnetworkRepository)
+		repository := network.NewMemoryRepository(testNetworks)
+		subnetworkRepository := subnetwork.NewMemoryRepository(nil)
+		service := network.NewkService(repository, subnetworkRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.NetworkIdentificationRequest{
@@ -109,11 +109,11 @@ func TestNetwork_Get(t *testing.T) {
 }
 
 func TestNetwork_List(t *testing.T) {
-	stream := shared.NewMockStream[*pb.Network](t.Context())
+	stream := shared.NewMockStream[*shared.NetworkModel](t.Context())
 
-	repository := network.NewMemoryNetworkRepository(testNetworks)
-	subnetworkRepository := subnetwork.NewMemorySubnetworkRepository(nil)
-	service := network.NewNetworkService(repository, subnetworkRepository)
+	repository := network.NewMemoryRepository(testNetworks)
+	subnetworkRepository := subnetwork.NewMemoryRepository(nil)
+	service := network.NewkService(repository, subnetworkRepository)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testNetworks) != len(stream.SentItems) {
