@@ -101,15 +101,15 @@ func (r *memoryRepository) Add(subnetwork *shared.SubnetworkModel) (*shared.Subn
 	return newSubnetwork, nil
 }
 
-func (r *memoryRepository) Delete(id uint32) error {
+func (r *memoryRepository) Delete(id uint32) (*shared.SubnetworkModel, error) {
 	for i, subnetwork := range r.subnetworks {
 		if subnetwork.Id == id {
 			r.subnetworks = append(r.subnetworks[:i], r.subnetworks[i+1:]...)
-			return nil
+			return subnetwork, nil
 		}
 	}
 
-	return fmt.Errorf("could not find subnetwork with id %d", id)
+	return nil, fmt.Errorf("could not find subnetwork with id %d", id)
 }
 
 func (r *memoryRepository) Update(id uint32, updateFn func(*shared.SubnetworkModel)) (*shared.SubnetworkModel, error) {

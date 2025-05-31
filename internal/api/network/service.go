@@ -14,12 +14,14 @@ type Service struct {
 	pb.UnimplementedNetworkServiceServer
 	repository           shared.NetworkRepository
 	subnetworkRepository shared.SubnetworkRepository
+	configurator         configurator
 }
 
-func NewkService(repository shared.NetworkRepository, subnetworkRepository shared.SubnetworkRepository) *Service {
+func NewService(repository shared.NetworkRepository, subnetworkRepository shared.SubnetworkRepository, configurator configurator) *Service {
 	return &Service{
 		repository:           repository,
 		subnetworkRepository: subnetworkRepository,
+		configurator:         configurator,
 	}
 }
 
@@ -29,19 +31,24 @@ func (s *Service) Get(ctx context.Context, req *pb.NetworkIdentificationRequest)
 
 func (s *Service) Delete(ctx context.Context, req *pb.NetworkIdentificationRequest) (*emptypb.Empty, error) {
 	subnetworks, errors := s.subnetworkRepository.GetAllByNetworkId(req.Id, ctx)
-
 	select {
-	case _, ok := <-subnetworks:
+	case subnetwork, ok := <-subnetworks:
 		if ok {
 			// TODO: Move to sentinel errors
-			return nil, fmt.Errorf("some subnetworks still depend on the network with id %d", req.Id)
+			return nil, fmt.Errorf("subnetwork with id %d still depends on the network with id %d", subnetwork.Id, req.Id)
 		}
-	case err := <-errors:
+	case err, ok := <-errors:
+		if ok {
+			return nil, err
+		}
+	}
+
+	network, err := s.repository.Delete(req.Id)
+	if err != nil {
 		return nil, err
 	}
 
-	err := s.repository.Delete(req.Id)
-	if err != nil {
+	if err := s.configurator.unconfigure(network); err != nil {
 		return nil, err
 	}
 
@@ -58,6 +65,11 @@ func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*
 		return nil, err
 	}
 
+	// TODO: eventual consistency mechanism?
+	if err := s.configurator.configure(returnedNetwork); err != nil {
+		return nil, err
+	}
+
 	return returnedNetwork, nil
 }
 
@@ -67,6 +79,10 @@ func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*sh
 	})
 
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.configure(network); err != nil {
 		return nil, err
 	}
 
@@ -90,8 +106,10 @@ func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[sha
 			if err := stream.Send(network); err != nil {
 				return err
 			}
-		case err := <-errors:
-			return err
+		case err, ok := <-errors:
+			if ok {
+				return err
+			}
 		}
 	}
 }

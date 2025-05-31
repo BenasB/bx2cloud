@@ -29,10 +29,12 @@ var testNetworks = []*shared.NetworkModel{
 	},
 }
 
+var mockConfigurator = network.NewMockConfigurator()
+
 func TestNetwork_Create(t *testing.T) {
 	repository := network.NewMemoryRepository(nil)
 	subnetworkRepository := subnetwork.NewMemoryRepository(nil)
-	service := network.NewkService(repository, subnetworkRepository)
+	service := network.NewService(repository, subnetworkRepository, mockConfigurator)
 	req := &pb.NetworkCreationRequest{
 		InternetAccess: true,
 	}
@@ -47,7 +49,7 @@ func TestNetwork_Delete(t *testing.T) {
 	for _, tt := range testNetworks {
 		repository := network.NewMemoryRepository(testNetworks)
 		subnetworkRepository := subnetwork.NewMemoryRepository(nil)
-		service := network.NewkService(repository, subnetworkRepository)
+		service := network.NewService(repository, subnetworkRepository, mockConfigurator)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
@@ -75,16 +77,29 @@ func TestNetwork_Delete_SubnetworksExist(t *testing.T) {
 	for _, tt := range testNetworks {
 		repository := network.NewMemoryRepository(testNetworks)
 		subnetworkRepository := subnetwork.NewMemoryRepository(testSubnetworks)
-		service := network.NewkService(repository, subnetworkRepository)
+		service := network.NewService(repository, subnetworkRepository, mockConfigurator)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
 				Id: tt.Id,
 			})
-			if err == nil || !strings.Contains(err.Error(), "subnetworks still depend") {
+			if err == nil || !strings.Contains(err.Error(), "still depends") {
 				t.Error("Network was deleted even though it shouldn't have because a subnetwork depended on it")
 			}
 		})
+	}
+}
+
+func TestNetwork_Delete_NetworkDoesNotExist(t *testing.T) {
+	repository := network.NewMemoryRepository(nil)
+	subnetworkRepository := subnetwork.NewMemoryRepository(nil)
+	service := network.NewService(repository, subnetworkRepository, mockConfigurator)
+
+	_, err := service.Delete(t.Context(), &pb.NetworkIdentificationRequest{
+		Id: 1,
+	})
+	if err == nil {
+		t.Error("There was no error returned by delete even though the network that we tried deleting does not exist")
 	}
 }
 
@@ -92,7 +107,7 @@ func TestNetwork_Get(t *testing.T) {
 	for _, tt := range testNetworks {
 		repository := network.NewMemoryRepository(testNetworks)
 		subnetworkRepository := subnetwork.NewMemoryRepository(nil)
-		service := network.NewkService(repository, subnetworkRepository)
+		service := network.NewService(repository, subnetworkRepository, mockConfigurator)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.NetworkIdentificationRequest{
@@ -113,7 +128,7 @@ func TestNetwork_List(t *testing.T) {
 
 	repository := network.NewMemoryRepository(testNetworks)
 	subnetworkRepository := subnetwork.NewMemoryRepository(nil)
-	service := network.NewkService(repository, subnetworkRepository)
+	service := network.NewService(repository, subnetworkRepository, mockConfigurator)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testNetworks) != len(stream.SentItems) {

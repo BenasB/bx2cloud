@@ -27,7 +27,7 @@ func (s *Service) Get(ctx context.Context, req *pb.SubnetworkIdentificationReque
 }
 
 func (s *Service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
-	err := s.repository.Delete(req.Id)
+	_, err := s.repository.Delete(req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +84,10 @@ func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[sha
 			if err := stream.Send(subnetwork); err != nil {
 				return err
 			}
-		case err := <-errors:
-			return err
+		case err, ok := <-errors:
+			if ok {
+				return err
+			}
 		}
 	}
 }

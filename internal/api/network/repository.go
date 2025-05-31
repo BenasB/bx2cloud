@@ -69,15 +69,15 @@ func (r *memoryRepository) Add(network *shared.NetworkModel) (*shared.NetworkMod
 	return newNetwork, nil
 }
 
-func (r *memoryRepository) Delete(id uint32) error {
+func (r *memoryRepository) Delete(id uint32) (*shared.NetworkModel, error) {
 	for i, network := range r.networks {
 		if network.Id == id {
 			r.networks = append(r.networks[:i], r.networks[i+1:]...)
-			return nil
+			return network, nil
 		}
 	}
 
-	return fmt.Errorf("could not find network with id %d", id)
+	return nil, fmt.Errorf("could not find network with id %d", id)
 }
 
 func (r *memoryRepository) Update(id uint32, updateFn func(*shared.NetworkModel)) (*shared.NetworkModel, error) {
