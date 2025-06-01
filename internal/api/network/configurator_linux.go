@@ -199,7 +199,35 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 		}
 	}
 
-	// TODO: default route
+	defaultRoute := &netlink.Route{
+		LinkIndex: nsVeth.Attrs().Index,
+		Dst: &net.IPNet{
+			IP:   net.IPv4zero,
+			Mask: net.CIDRMask(0, 32),
+		}, // default, 0.0.0.0/0
+		Gw: rootVethAddr.IP,
+	}
+
+	routes, err := netlink.RouteList(nsVeth, netlink.FAMILY_V4)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve routes of the network's namespace: %w", err)
+	}
+
+	var defaultRouteExists = false
+	for _, route := range routes {
+		if defaultRoute.LinkIndex == route.LinkIndex &&
+			defaultRoute.Dst.IP.Equal(route.Dst.IP) &&
+			defaultRoute.Gw.Equal(route.Gw) {
+			defaultRouteExists = true
+			continue
+		}
+	}
+
+	if !defaultRouteExists {
+		if err := netlink.RouteAdd(defaultRoute); err != nil {
+			return fmt.Errorf("failed to add the default route: %w", err)
+		}
+	}
 
 	netns.Set(origNs)
 	runtime.UnlockOSThread()
@@ -211,6 +239,7 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 
 func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
 	rootVethName := fmt.Sprintf("bx2-r-%d", model.Id)
+	nsVethName := fmt.Sprintf("%s-ns", rootVethName)
 
 	rootVeth, err := netlink.LinkByName(rootVethName)
 	if err == nil {
@@ -219,7 +248,50 @@ func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkM
 		}
 	}
 
-	// TODO: default route
+	runtime.LockOSThread()
+	netns.Set(ns)
+
+	nsVeth, err := netlink.LinkByName(nsVethName)
+	if err == nil {
+		const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
+		networkIp := networkIpStart + model.Id<<2
+		rootVethIp := networkIp + 1
+
+		rootVethAddr := &netlink.Addr{
+			IPNet: &net.IPNet{
+				IP:   net.IPv4(byte(rootVethIp>>24), byte(rootVethIp>>16), byte(rootVethIp>>8), byte(rootVethIp)),
+				Mask: net.CIDRMask(30, 32),
+			},
+		}
+
+		defaultRoute := &netlink.Route{
+			LinkIndex: nsVeth.Attrs().Index,
+			Dst: &net.IPNet{
+				IP:   net.IPv4zero,
+				Mask: net.CIDRMask(0, 32),
+			}, // default, 0.0.0.0/0
+			Gw: rootVethAddr.IP,
+		}
+
+		routes, err := netlink.RouteList(nsVeth, netlink.FAMILY_V4)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve routes of the network's namespace: %w", err)
+		}
+
+		for _, route := range routes {
+			if defaultRoute.LinkIndex == route.LinkIndex &&
+				defaultRoute.Dst.IP.Equal(route.Dst.IP) &&
+				defaultRoute.Gw.Equal(route.Gw) {
+				if netlink.RouteDel(&route); err != nil {
+					return fmt.Errorf("failed to remove the default route: %w", err)
+				}
+				break
+			}
+		}
+	}
+
+	netns.Set(origNs)
+	runtime.UnlockOSThread()
 
 	// TODO: Masquerade
 
