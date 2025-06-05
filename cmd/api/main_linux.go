@@ -20,7 +20,10 @@ func main() {
 	grpcServer := grpc.NewServer(opts...)
 
 	networkRepository := network.NewMemoryRepository(sampleNetworks)
-	networkConfigurator := network.NewNamespaceConfigurator()
+	networkConfigurator, err := network.NewNamespaceConfigurator()
+	if err != nil {
+		log.Fatalf("failed to create the network configurator: %v", err)
+	}
 	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
 
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))

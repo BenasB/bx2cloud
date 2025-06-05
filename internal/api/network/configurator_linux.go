@@ -8,16 +8,63 @@ import (
 	"runtime"
 
 	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/coreos/go-iptables/iptables"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
 
 var _ configurator = &namespaceConfigurator{}
 
-type namespaceConfigurator struct{}
+type namespaceConfigurator struct {
+	primaryInterface netlink.Link
+	ipt              *iptables.IPTables
+}
 
-func NewNamespaceConfigurator() configurator {
-	return &namespaceConfigurator{}
+func NewNamespaceConfigurator() (configurator, error) {
+	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get routes when locating the primary interface: %w", err)
+	}
+
+	var primaryInterface netlink.Link
+	for _, route := range routes {
+		if route.Dst.IP.Equal(net.IPv4zero) {
+			link, err := netlink.LinkByIndex(route.LinkIndex)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get the primary interface: %w", err)
+			}
+			primaryInterface = link
+			break
+		}
+	}
+
+	if primaryInterface == nil {
+		return nil, fmt.Errorf("failed to find the primary interface")
+	}
+
+	if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644); err != nil {
+		return nil, fmt.Errorf("failed to enable ip forwarding in the root namespace: %w", err)
+	}
+
+	ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create iptables instance: %w", err)
+	}
+
+	err = ipt.AppendUnique("filter", "FORWARD",
+		"-i", "bx2-r-+",
+		"-o", "bx2-r-+",
+		"-j", "DROP",
+	)
+
+	if err != nil {
+		log.Fatalf("Failed to add MASQUERADE rule: %v", err)
+	}
+
+	return &namespaceConfigurator{
+		primaryInterface: primaryInterface,
+		ipt:              ipt,
+	}, nil
 }
 
 func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
@@ -96,40 +143,23 @@ func (n *namespaceConfigurator) unconfigure(model *shared.NetworkModel) error {
 }
 
 func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
-	rootVethName := fmt.Sprintf("bx2-r-%d", model.Id)
-	nsVethName := fmt.Sprintf("%s-ns", rootVethName)
-	const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
-	networkIp := networkIpStart + model.Id<<2
-	rootVethIp := networkIp + 1
-	nsVethIp := networkIp + 2
-
-	rootVethAddr := &netlink.Addr{
-		IPNet: &net.IPNet{
-			IP:   net.IPv4(byte(rootVethIp>>24), byte(rootVethIp>>16), byte(rootVethIp>>8), byte(rootVethIp)),
-			Mask: net.CIDRMask(30, 32),
-		},
-	}
-
-	nsVethAddr := &netlink.Addr{
-		IPNet: &net.IPNet{
-			IP:   net.IPv4(byte(nsVethIp>>24), byte(nsVethIp>>16), byte(nsVethIp>>8), byte(nsVethIp)),
-			Mask: net.CIDRMask(30, 32),
-		},
-	}
-
-	la := netlink.NewLinkAttrs()
-	la.Name = rootVethName
-	rootVethCreation := &netlink.Veth{
-		LinkAttrs:     la,
-		PeerName:      nsVethName,
-		PeerNamespace: netlink.NsFd(ns),
-	}
+	rootVethName := n.getRootVethName(model)
+	nsVethName := n.getNsVethName(model)
 
 	rootVeth, err := netlink.LinkByName(rootVethName)
 	if err != nil {
+		la := netlink.NewLinkAttrs()
+		la.Name = rootVethName
+		rootVethCreation := &netlink.Veth{
+			LinkAttrs:     la,
+			PeerName:      nsVethName,
+			PeerNamespace: netlink.NsFd(ns),
+		}
+
 		if err := netlink.LinkAdd(rootVethCreation); err != nil {
 			return fmt.Errorf("failed to add a veth pair when connecting the network's namespace to the root namespace: %w", err)
 		}
+
 		rootVeth = rootVethCreation
 	}
 
@@ -137,6 +167,8 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	if err != nil {
 		return fmt.Errorf("failed to retrieve IP addresses of the root namespace veth end: %w", err)
 	}
+
+	rootVethAddr := n.getRootVethAddr(model)
 
 	var rootVethIpExists = false
 	for _, addr := range rootVethAddrs {
@@ -174,6 +206,8 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	if err != nil {
 		return fmt.Errorf("failed to retrieve IP addresses of the network's namespace veth end: %w", err)
 	}
+
+	nsVethAddr := n.getNsVethAddr(model)
 
 	var nsVethIpExists = false
 	for _, addr := range nsVethAddrs {
@@ -232,16 +266,21 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	netns.Set(origNs)
 	runtime.UnlockOSThread()
 
-	// TODO: Masquerade
+	err = n.ipt.AppendUnique("nat", "POSTROUTING",
+		"-s", nsVethAddr.IPNet.String(),
+		"-o", n.primaryInterface.Attrs().Name,
+		"-j", "MASQUERADE",
+	)
+
+	if err != nil {
+		log.Fatalf("Failed to add MASQUERADE rule: %v", err)
+	}
 
 	return nil
 }
 
 func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
-	rootVethName := fmt.Sprintf("bx2-r-%d", model.Id)
-	nsVethName := fmt.Sprintf("%s-ns", rootVethName)
-
-	rootVeth, err := netlink.LinkByName(rootVethName)
+	rootVeth, err := netlink.LinkByName(n.getRootVethName(model))
 	if err == nil {
 		if netlink.LinkDel(rootVeth); err != nil {
 			return fmt.Errorf("failed to remove the veth pair: %w", err)
@@ -251,7 +290,7 @@ func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkM
 	runtime.LockOSThread()
 	netns.Set(ns)
 
-	nsVeth, err := netlink.LinkByName(nsVethName)
+	nsVeth, err := netlink.LinkByName(n.getNsVethName(model))
 	if err == nil {
 		const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
 		networkIp := networkIpStart + model.Id<<2
@@ -293,7 +332,50 @@ func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkM
 	netns.Set(origNs)
 	runtime.UnlockOSThread()
 
-	// TODO: Masquerade
+	nsVethAddr := n.getNsVethAddr(model)
+	err = n.ipt.DeleteIfExists("nat", "POSTROUTING",
+		"-s", nsVethAddr.IPNet.String(),
+		"-o", n.primaryInterface.Attrs().Name,
+		"-j", "MASQUERADE",
+	)
+
+	if err != nil {
+		log.Fatalf("Failed to remove MASQUERADE rule: %v", err)
+	}
 
 	return nil
+}
+
+func (n *namespaceConfigurator) getRootVethName(model *shared.NetworkModel) string {
+	return fmt.Sprintf("bx2-r-%d", model.Id)
+}
+
+func (n *namespaceConfigurator) getNsVethName(model *shared.NetworkModel) string {
+	return fmt.Sprintf("bx2-r-%d-ns", model.Id)
+}
+
+func (n *namespaceConfigurator) getRootVethAddr(model *shared.NetworkModel) *netlink.Addr {
+	const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
+	networkIp := networkIpStart + model.Id<<2
+	vethIp := networkIp + 1
+
+	return &netlink.Addr{
+		IPNet: &net.IPNet{
+			IP:   net.IPv4(byte(vethIp>>24), byte(vethIp>>16), byte(vethIp>>8), byte(vethIp)),
+			Mask: net.CIDRMask(30, 32),
+		},
+	}
+}
+
+func (n *namespaceConfigurator) getNsVethAddr(model *shared.NetworkModel) *netlink.Addr {
+	const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
+	networkIp := networkIpStart + model.Id<<2
+	vethIp := networkIp + 2
+
+	return &netlink.Addr{
+		IPNet: &net.IPNet{
+			IP:   net.IPv4(byte(vethIp>>24), byte(vethIp>>16), byte(vethIp>>8), byte(vethIp)),
+			Mask: net.CIDRMask(30, 32),
+		},
+	}
 }
