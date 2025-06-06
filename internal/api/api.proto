@@ -53,6 +53,7 @@ message SubnetworkCreationRequest {
 
 message SubnetworkUpdateRequest {
     SubnetworkIdentificationRequest identification = 1;
+    // TODO: different message for update body, disallow passing different networkId
     SubnetworkCreationRequest update = 2;
 }
 

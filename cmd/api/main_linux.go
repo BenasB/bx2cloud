@@ -26,8 +26,10 @@ func main() {
 	}
 	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
 
+	subnetworkConfigurator := subnetwork.NewBridgeConfigurator(networkConfigurator.GetNetworkNamespaceName)
+
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
-	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository))
+	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator))
 
 	log.Printf("Starting server on %s", address)
 	if err := grpcServer.Serve(lis); err != nil {

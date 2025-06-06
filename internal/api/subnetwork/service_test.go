@@ -17,33 +17,40 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var testNetworks = []*shared.NetworkModel{
+	&shared.NetworkModel{
+		Id:             5123,
+		InternetAccess: false,
+		CreatedAt:      timestamppb.New(time.Now().Add(-time.Hour)),
+	},
+}
+
 var testSubnetworks = []*shared.SubnetworkModel{
 	&shared.SubnetworkModel{
 		Id:           1,
+		NetworkId:    testNetworks[0].Id,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 0, 0}),
 		PrefixLength: 24,
 		CreatedAt:    timestamppb.New(time.Now().Add(-time.Hour)),
 	},
 	&shared.SubnetworkModel{
 		Id:           2,
+		NetworkId:    testNetworks[0].Id,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 1, 0}),
 		PrefixLength: 24,
 		CreatedAt:    timestamppb.New(time.Now().Add(-time.Minute)),
 	},
 }
 
+var mockConfigurator = subnetwork.NewMockConfigurator()
+
 func TestSubnetwork_Create(t *testing.T) {
 	repository := subnetwork.NewMemoryRepository(nil)
-	testNetwork := &shared.NetworkModel{
-		Id:             42,
-		InternetAccess: true,
-		CreatedAt:      timestamppb.New(time.Now().Add(-time.Hour)),
-	}
-	networkRepository := network.NewMemoryRepository([]*shared.NetworkModel{testNetwork})
-	service := subnetwork.NewService(repository, networkRepository)
+	networkRepository := network.NewMemoryRepository(testNetworks)
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
 
 	req := &pb.SubnetworkCreationRequest{
-		NetworkId:    testNetwork.Id,
+		NetworkId:    testNetworks[0].Id,
 		Address:      binary.BigEndian.Uint32([]byte{192, 168, 0, 0}),
 		PrefixLength: 30,
 	}
@@ -57,7 +64,7 @@ func TestSubnetwork_Create(t *testing.T) {
 func TestSubnetwork_Create_NetworkNotFound(t *testing.T) {
 	repository := subnetwork.NewMemoryRepository(nil)
 	networkRepository := network.NewMemoryRepository(nil)
-	service := subnetwork.NewService(repository, networkRepository)
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
 	req := &pb.SubnetworkCreationRequest{
 		NetworkId:    0,
 		Address:      binary.BigEndian.Uint32([]byte{192, 168, 0, 0}),
@@ -73,8 +80,8 @@ func TestSubnetwork_Create_NetworkNotFound(t *testing.T) {
 func TestSubnetwork_Delete(t *testing.T) {
 	for _, tt := range testSubnetworks {
 		repository := subnetwork.NewMemoryRepository(testSubnetworks)
-		networkRepository := network.NewMemoryRepository(nil)
-		service := subnetwork.NewService(repository, networkRepository)
+		networkRepository := network.NewMemoryRepository(testNetworks)
+		service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -91,7 +98,7 @@ func TestSubnetwork_Get(t *testing.T) {
 	for _, tt := range testSubnetworks {
 		repository := subnetwork.NewMemoryRepository(testSubnetworks)
 		networkRepository := network.NewMemoryRepository(nil)
-		service := subnetwork.NewService(repository, networkRepository)
+		service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -112,7 +119,7 @@ func TestSubnetwork_List(t *testing.T) {
 
 	repository := subnetwork.NewMemoryRepository(testSubnetworks)
 	networkRepository := network.NewMemoryRepository(nil)
-	service := subnetwork.NewService(repository, networkRepository)
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testSubnetworks) != len(stream.SentItems) {

@@ -13,12 +13,14 @@ type Service struct {
 	pb.UnimplementedSubnetworkServiceServer
 	repository        shared.SubnetworkRepository
 	networkRepository shared.NetworkRepository
+	configurator      configurator
 }
 
-func NewService(subnetworkRepository shared.SubnetworkRepository, networkRepository shared.NetworkRepository) *Service {
+func NewService(subnetworkRepository shared.SubnetworkRepository, networkRepository shared.NetworkRepository, configurator configurator) *Service {
 	return &Service{
 		repository:        subnetworkRepository,
 		networkRepository: networkRepository,
+		configurator:      configurator,
 	}
 }
 
@@ -27,8 +29,19 @@ func (s *Service) Get(ctx context.Context, req *pb.SubnetworkIdentificationReque
 }
 
 func (s *Service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
-	_, err := s.repository.Delete(req.Id)
+	subnetwork, err := s.repository.Delete(req.Id)
 	if err != nil {
+		return nil, err
+	}
+
+	network, err := s.networkRepository.Get(subnetwork.NetworkId)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Handle things that are connected to this subnetwork
+
+	if err := s.configurator.unconfigure(subnetwork, network); err != nil {
 		return nil, err
 	}
 
@@ -36,18 +49,23 @@ func (s *Service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRe
 }
 
 func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*shared.SubnetworkModel, error) {
-	if _, err := s.networkRepository.Get(req.NetworkId); err != nil {
+	network, err := s.networkRepository.Get(req.NetworkId)
+	if err != nil {
 		return nil, err
 	}
 
 	newSubnetwork := &shared.SubnetworkModel{
 		NetworkId:    req.NetworkId,
-		Address:      req.Address,
+		Address:      req.Address, // TODO: AND address with network mask to make sure this stores the network IP + unit test
 		PrefixLength: req.PrefixLength,
 	}
 
 	returnedSubnetwork, err := s.repository.Add(newSubnetwork)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.configure(returnedSubnetwork, network); err != nil {
 		return nil, err
 	}
 
@@ -61,6 +79,15 @@ func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (
 	})
 
 	if err != nil {
+		return nil, err
+	}
+
+	network, err := s.networkRepository.Get(subnetwork.NetworkId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.configure(subnetwork, network); err != nil {
 		return nil, err
 	}
 

@@ -20,7 +20,7 @@ type namespaceConfigurator struct {
 	ipt              *iptables.IPTables
 }
 
-func NewNamespaceConfigurator() (configurator, error) {
+func NewNamespaceConfigurator() (*namespaceConfigurator, error) {
 	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get routes when locating the primary interface: %w", err)
@@ -58,7 +58,7 @@ func NewNamespaceConfigurator() (configurator, error) {
 	)
 
 	if err != nil {
-		log.Fatalf("Failed to add MASQUERADE rule: %v", err)
+		return nil, fmt.Errorf("Failed to add DROP rule for traffic between bx2cloud networks: %w", err)
 	}
 
 	return &namespaceConfigurator{
@@ -68,7 +68,7 @@ func NewNamespaceConfigurator() (configurator, error) {
 }
 
 func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
-	nsName := fmt.Sprintf("bx2cloud-router-%d", model.Id)
+	nsName := n.GetNetworkNamespaceName(model)
 	origNs, err := netns.Get()
 	defer origNs.Close()
 
@@ -85,18 +85,24 @@ func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
 			return fmt.Errorf("failed to create a network namespace for the network: %w", err)
 		}
 
-		netns.Set(origNs)
+		if err := netns.Set(origNs); err != nil {
+			return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
+		}
 		runtime.UnlockOSThread()
 	}
 
 	runtime.LockOSThread()
-	netns.Set(ns)
+	if err := netns.Set(ns); err != nil {
+		return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+	}
 
 	if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644); err != nil {
 		return fmt.Errorf("failed to enable ip forwarding: %w", err)
 	}
 
-	netns.Set(origNs)
+	if err := netns.Set(origNs); err != nil {
+		return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
+	}
 	runtime.UnlockOSThread()
 
 	if model.InternetAccess {
@@ -115,7 +121,7 @@ func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
 }
 
 func (n *namespaceConfigurator) unconfigure(model *shared.NetworkModel) error {
-	nsName := fmt.Sprintf("bx2cloud-router-%d", model.Id)
+	nsName := n.GetNetworkNamespaceName(model)
 
 	origNs, err := netns.Get()
 	defer origNs.Close()
@@ -123,18 +129,17 @@ func (n *namespaceConfigurator) unconfigure(model *shared.NetworkModel) error {
 		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
 	}
 
-	ns, err := netns.GetFromName(nsName)
+	ns, nsErr := netns.GetFromName(nsName)
 	defer ns.Close()
-	if err != nil {
-		return fmt.Errorf("failed to get the network namespace for the network: %w", err)
-	}
 
 	if err := n.unconfigureInternetAccess(model, origNs, ns); err != nil {
 		return err
 	}
 
-	if netns.DeleteNamed(nsName) != nil {
-		return fmt.Errorf("failed to delete the network namespace: %w", err)
+	if nsErr == nil {
+		if err := netns.DeleteNamed(nsName); err != nil {
+			return fmt.Errorf("failed to delete the network namespace: %w", err)
+		}
 	}
 
 	log.Printf("Successfully unconfigured network with the id %d", model.Id)
@@ -195,7 +200,9 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	}
 
 	runtime.LockOSThread()
-	netns.Set(ns)
+	if err := netns.Set(ns); err != nil {
+		return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+	}
 
 	nsVeth, err := netlink.LinkByName(nsVethName)
 	if err != nil {
@@ -263,7 +270,18 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 		}
 	}
 
-	netns.Set(origNs)
+	err = n.ipt.AppendUnique("nat", "POSTROUTING",
+		"-o", nsVeth.Attrs().Name,
+		"-j", "MASQUERADE",
+	)
+
+	if err != nil {
+		return fmt.Errorf("Failed to add SNAT rule for subnetwork translation: %w", err)
+	}
+
+	if err := netns.Set(origNs); err != nil {
+		return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
+	}
 	runtime.UnlockOSThread()
 
 	err = n.ipt.AppendUnique("nat", "POSTROUTING",
@@ -273,64 +291,79 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	)
 
 	if err != nil {
-		log.Fatalf("Failed to add MASQUERADE rule: %v", err)
+		return fmt.Errorf("Failed to add SNAT rule on the primary interface: %w", err)
 	}
 
 	return nil
 }
 
 func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
+	if ns.IsOpen() {
+		runtime.LockOSThread()
+		if err := netns.Set(ns); err != nil {
+			return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+		}
+
+		nsVeth, err := netlink.LinkByName(n.getNsVethName(model))
+		if err == nil {
+			const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
+			networkIp := networkIpStart + model.Id<<2
+			rootVethIp := networkIp + 1
+
+			rootVethAddr := &netlink.Addr{
+				IPNet: &net.IPNet{
+					IP:   net.IPv4(byte(rootVethIp>>24), byte(rootVethIp>>16), byte(rootVethIp>>8), byte(rootVethIp)),
+					Mask: net.CIDRMask(30, 32),
+				},
+			}
+
+			defaultRoute := &netlink.Route{
+				LinkIndex: nsVeth.Attrs().Index,
+				Dst: &net.IPNet{
+					IP:   net.IPv4zero,
+					Mask: net.CIDRMask(0, 32),
+				}, // default, 0.0.0.0/0
+				Gw: rootVethAddr.IP,
+			}
+
+			routes, err := netlink.RouteList(nsVeth, netlink.FAMILY_V4)
+			if err != nil {
+				return fmt.Errorf("failed to retrieve routes of the network's namespace: %w", err)
+			}
+
+			for _, route := range routes {
+				if defaultRoute.LinkIndex == route.LinkIndex &&
+					defaultRoute.Dst.IP.Equal(route.Dst.IP) &&
+					defaultRoute.Gw.Equal(route.Gw) {
+					if netlink.RouteDel(&route); err != nil {
+						return fmt.Errorf("failed to remove the default route: %w", err)
+					}
+					break
+				}
+			}
+
+			err = n.ipt.DeleteIfExists("nat", "POSTROUTING",
+				"-o", nsVeth.Attrs().Name,
+				"-j", "MASQUERADE",
+			)
+
+			if err != nil {
+				return fmt.Errorf("Failed to remove SNAT rule for subnetwork translation: %w", err)
+			}
+		}
+
+		if err := netns.Set(origNs); err != nil {
+			return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
+		}
+		runtime.UnlockOSThread()
+	}
+
 	rootVeth, err := netlink.LinkByName(n.getRootVethName(model))
 	if err == nil {
 		if netlink.LinkDel(rootVeth); err != nil {
 			return fmt.Errorf("failed to remove the veth pair: %w", err)
 		}
 	}
-
-	runtime.LockOSThread()
-	netns.Set(ns)
-
-	nsVeth, err := netlink.LinkByName(n.getNsVethName(model))
-	if err == nil {
-		const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
-		networkIp := networkIpStart + model.Id<<2
-		rootVethIp := networkIp + 1
-
-		rootVethAddr := &netlink.Addr{
-			IPNet: &net.IPNet{
-				IP:   net.IPv4(byte(rootVethIp>>24), byte(rootVethIp>>16), byte(rootVethIp>>8), byte(rootVethIp)),
-				Mask: net.CIDRMask(30, 32),
-			},
-		}
-
-		defaultRoute := &netlink.Route{
-			LinkIndex: nsVeth.Attrs().Index,
-			Dst: &net.IPNet{
-				IP:   net.IPv4zero,
-				Mask: net.CIDRMask(0, 32),
-			}, // default, 0.0.0.0/0
-			Gw: rootVethAddr.IP,
-		}
-
-		routes, err := netlink.RouteList(nsVeth, netlink.FAMILY_V4)
-		if err != nil {
-			return fmt.Errorf("failed to retrieve routes of the network's namespace: %w", err)
-		}
-
-		for _, route := range routes {
-			if defaultRoute.LinkIndex == route.LinkIndex &&
-				defaultRoute.Dst.IP.Equal(route.Dst.IP) &&
-				defaultRoute.Gw.Equal(route.Gw) {
-				if netlink.RouteDel(&route); err != nil {
-					return fmt.Errorf("failed to remove the default route: %w", err)
-				}
-				break
-			}
-		}
-	}
-
-	netns.Set(origNs)
-	runtime.UnlockOSThread()
 
 	nsVethAddr := n.getNsVethAddr(model)
 	err = n.ipt.DeleteIfExists("nat", "POSTROUTING",
@@ -340,10 +373,14 @@ func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkM
 	)
 
 	if err != nil {
-		log.Fatalf("Failed to remove MASQUERADE rule: %v", err)
+		return fmt.Errorf("Failed to remove SNAT rule on the primary interface: %w", err)
 	}
 
 	return nil
+}
+
+func (n *namespaceConfigurator) GetNetworkNamespaceName(model *shared.NetworkModel) string {
+	return fmt.Sprintf("bx2cloud-router-%d", model.Id)
 }
 
 func (n *namespaceConfigurator) getRootVethName(model *shared.NetworkModel) string {
