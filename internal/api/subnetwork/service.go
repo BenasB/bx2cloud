@@ -24,7 +24,7 @@ func NewService(subnetworkRepository shared.SubnetworkRepository, networkReposit
 	}
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*shared.SubnetworkModel, error) {
+func (s *Service) Get(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*pb.Subnetwork, error) {
 	return s.repository.Get(req.Id)
 }
 
@@ -48,7 +48,7 @@ func (s *Service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRe
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*shared.SubnetworkModel, error) {
+func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*pb.Subnetwork, error) {
 	network, err := s.networkRepository.Get(req.NetworkId)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 	return returnedSubnetwork, nil
 }
 
-func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*shared.SubnetworkModel, error) {
+func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*pb.Subnetwork, error) {
 	subnetwork, err := s.repository.Update(req.Identification.Id, func(sn *shared.SubnetworkModel) {
 		sn.Address = req.Update.Address
 		sn.PrefixLength = req.Update.PrefixLength
@@ -94,7 +94,7 @@ func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (
 	return subnetwork, nil
 }
 
-func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[shared.SubnetworkModel]) error {
+func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Subnetwork]) error {
 	subnetworks, errors := s.repository.GetAll(stream.Context())
 
 	for {

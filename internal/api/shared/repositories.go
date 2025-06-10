@@ -6,6 +6,7 @@ import (
 
 type NetworkRepository interface {
 	Get(id uint32) (*NetworkModel, error)
+	// TODO: Maybe Reader/Writer would work better here than two manually handled channels?
 	GetAll(ctx context.Context) (<-chan *NetworkModel, <-chan error)
 	Add(network *NetworkModel) (*NetworkModel, error)
 	Delete(id uint32) (*NetworkModel, error)

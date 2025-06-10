@@ -24,6 +24,7 @@ const (
 	ContainerService_List_FullMethodName   = "/bx2cloud.ContainerService/List"
 	ContainerService_Create_FullMethodName = "/bx2cloud.ContainerService/Create"
 	ContainerService_Delete_FullMethodName = "/bx2cloud.ContainerService/Delete"
+	ContainerService_Exec_FullMethodName   = "/bx2cloud.ContainerService/Exec"
 )
 
 // ContainerServiceClient is the client API for ContainerService service.
@@ -34,6 +35,7 @@ type ContainerServiceClient interface {
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Container], error)
 	Create(ctx context.Context, in *ContainerCreationRequest, opts ...grpc.CallOption) (*Container, error)
 	Delete(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Exec(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ContainerExecRequest, ContainerExecResponse], error)
 }
 
 type containerServiceClient struct {
@@ -93,6 +95,19 @@ func (c *containerServiceClient) Delete(ctx context.Context, in *ContainerIdenti
 	return out, nil
 }
 
+func (c *containerServiceClient) Exec(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ContainerExecRequest, ContainerExecResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ContainerService_ServiceDesc.Streams[1], ContainerService_Exec_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ContainerExecRequest, ContainerExecResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ContainerService_ExecClient = grpc.BidiStreamingClient[ContainerExecRequest, ContainerExecResponse]
+
 // ContainerServiceServer is the server API for ContainerService service.
 // All implementations must embed UnimplementedContainerServiceServer
 // for forward compatibility.
@@ -101,6 +116,7 @@ type ContainerServiceServer interface {
 	List(*emptypb.Empty, grpc.ServerStreamingServer[Container]) error
 	Create(context.Context, *ContainerCreationRequest) (*Container, error)
 	Delete(context.Context, *ContainerIdentificationRequest) (*emptypb.Empty, error)
+	Exec(grpc.BidiStreamingServer[ContainerExecRequest, ContainerExecResponse]) error
 	mustEmbedUnimplementedContainerServiceServer()
 }
 
@@ -122,6 +138,9 @@ func (UnimplementedContainerServiceServer) Create(context.Context, *ContainerCre
 }
 func (UnimplementedContainerServiceServer) Delete(context.Context, *ContainerIdentificationRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedContainerServiceServer) Exec(grpc.BidiStreamingServer[ContainerExecRequest, ContainerExecResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method Exec not implemented")
 }
 func (UnimplementedContainerServiceServer) mustEmbedUnimplementedContainerServiceServer() {}
 func (UnimplementedContainerServiceServer) testEmbeddedByValue()                          {}
@@ -209,6 +228,13 @@ func _ContainerService_Delete_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContainerService_Exec_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ContainerServiceServer).Exec(&grpc.GenericServerStream[ContainerExecRequest, ContainerExecResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ContainerService_ExecServer = grpc.BidiStreamingServer[ContainerExecRequest, ContainerExecResponse]
+
 // ContainerService_ServiceDesc is the grpc.ServiceDesc for ContainerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -234,6 +260,12 @@ var ContainerService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "List",
 			Handler:       _ContainerService_List_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "Exec",
+			Handler:       _ContainerService_Exec_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "container.proto",

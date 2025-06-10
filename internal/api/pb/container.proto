@@ -11,7 +11,7 @@ service ContainerService {
     rpc List (google.protobuf.Empty) returns (stream Container);
     rpc Create (ContainerCreationRequest) returns (Container);
     rpc Delete (ContainerIdentificationRequest) returns (google.protobuf.Empty);
-    // rpc Exec (ContainerIdentificationRequest) returns (?);
+    rpc Exec (stream ContainerExecRequest) returns (stream ContainerExecResponse);
     // rpc Start (ContainerIdentificationRequest) returns (?);
     // rpc Stop (ContainerIdentificationRequest) returns (?);
 }
@@ -29,7 +29,27 @@ message Container {
     uint32 id = 1;
     fixed32 address = 2;
     fixed32 prefix_length = 3;
-    uint32 status = 4;
+    int32 status = 4;
     string image = 5;
     google.protobuf.Timestamp createdAt = 6;
+}
+
+message ContainerExecRequest {
+    oneof input {
+        ContainerExecInitializationRequest initialization = 1;
+        bytes stdin = 2;
+    }
+}
+
+message ContainerExecInitializationRequest {
+    ContainerIdentificationRequest identification = 1;
+    int32 console_width = 2;
+    int32 console_height = 3;
+}
+
+message ContainerExecResponse {
+    oneof output {
+        bytes stdout = 1;
+        int32 exit_code = 2;
+    }
 }

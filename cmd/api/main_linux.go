@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/BenasB/bx2cloud/internal/api/container"
 	"github.com/BenasB/bx2cloud/internal/api/network"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
@@ -24,12 +25,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create the network configurator: %v", err)
 	}
-	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
 
+	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
 	subnetworkConfigurator := subnetwork.NewBridgeConfigurator(networkConfigurator.GetNetworkNamespaceName)
+
+	containerRepository := container.NewLibcontainerRepository()
 
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
 	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator))
+	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository))
 
 	log.Printf("Starting server on %s", address)
 	if err := grpcServer.Serve(lis); err != nil {

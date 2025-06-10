@@ -25,7 +25,7 @@ func NewService(repository shared.NetworkRepository, subnetworkRepository shared
 	}
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.NetworkIdentificationRequest) (*shared.NetworkModel, error) {
+func (s *Service) Get(ctx context.Context, req *pb.NetworkIdentificationRequest) (*pb.Network, error) {
 	return s.repository.Get(req.Id)
 }
 
@@ -55,7 +55,7 @@ func (s *Service) Delete(ctx context.Context, req *pb.NetworkIdentificationReque
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*shared.NetworkModel, error) {
+func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*pb.Network, error) {
 	newNetwork := &shared.NetworkModel{
 		InternetAccess: req.InternetAccess,
 	}
@@ -73,7 +73,7 @@ func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*
 	return returnedNetwork, nil
 }
 
-func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*shared.NetworkModel, error) {
+func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb.Network, error) {
 	network, err := s.repository.Update(req.Identification.Id, func(sn *shared.NetworkModel) {
 		sn.InternetAccess = req.Update.InternetAccess
 	})
@@ -89,7 +89,7 @@ func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*sh
 	return network, nil
 }
 
-func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[shared.NetworkModel]) error {
+func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Network]) error {
 	networks, errors := s.repository.GetAll(stream.Context())
 
 	for {

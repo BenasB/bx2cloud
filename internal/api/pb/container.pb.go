@@ -124,7 +124,7 @@ type Container struct {
 	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Address       uint32                 `protobuf:"fixed32,2,opt,name=address,proto3" json:"address,omitempty"`
 	PrefixLength  uint32                 `protobuf:"fixed32,3,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
-	Status        uint32                 `protobuf:"varint,4,opt,name=status,proto3" json:"status,omitempty"`
+	Status        int32                  `protobuf:"varint,4,opt,name=status,proto3" json:"status,omitempty"`
 	Image         string                 `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -182,7 +182,7 @@ func (x *Container) GetPrefixLength() uint32 {
 	return 0
 }
 
-func (x *Container) GetStatus() uint32 {
+func (x *Container) GetStatus() int32 {
 	if x != nil {
 		return x.Status
 	}
@@ -203,6 +203,230 @@ func (x *Container) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+type ContainerExecRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Input:
+	//
+	//	*ContainerExecRequest_Initialization
+	//	*ContainerExecRequest_Stdin
+	Input         isContainerExecRequest_Input `protobuf_oneof:"input"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContainerExecRequest) Reset() {
+	*x = ContainerExecRequest{}
+	mi := &file_container_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContainerExecRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContainerExecRequest) ProtoMessage() {}
+
+func (x *ContainerExecRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_container_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContainerExecRequest.ProtoReflect.Descriptor instead.
+func (*ContainerExecRequest) Descriptor() ([]byte, []int) {
+	return file_container_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ContainerExecRequest) GetInput() isContainerExecRequest_Input {
+	if x != nil {
+		return x.Input
+	}
+	return nil
+}
+
+func (x *ContainerExecRequest) GetInitialization() *ContainerExecInitializationRequest {
+	if x != nil {
+		if x, ok := x.Input.(*ContainerExecRequest_Initialization); ok {
+			return x.Initialization
+		}
+	}
+	return nil
+}
+
+func (x *ContainerExecRequest) GetStdin() []byte {
+	if x != nil {
+		if x, ok := x.Input.(*ContainerExecRequest_Stdin); ok {
+			return x.Stdin
+		}
+	}
+	return nil
+}
+
+type isContainerExecRequest_Input interface {
+	isContainerExecRequest_Input()
+}
+
+type ContainerExecRequest_Initialization struct {
+	Initialization *ContainerExecInitializationRequest `protobuf:"bytes,1,opt,name=initialization,proto3,oneof"`
+}
+
+type ContainerExecRequest_Stdin struct {
+	Stdin []byte `protobuf:"bytes,2,opt,name=stdin,proto3,oneof"`
+}
+
+func (*ContainerExecRequest_Initialization) isContainerExecRequest_Input() {}
+
+func (*ContainerExecRequest_Stdin) isContainerExecRequest_Input() {}
+
+type ContainerExecInitializationRequest struct {
+	state          protoimpl.MessageState          `protogen:"open.v1"`
+	Identification *ContainerIdentificationRequest `protobuf:"bytes,1,opt,name=identification,proto3" json:"identification,omitempty"`
+	ConsoleWidth   int32                           `protobuf:"varint,2,opt,name=console_width,json=consoleWidth,proto3" json:"console_width,omitempty"`
+	ConsoleHeight  int32                           `protobuf:"varint,3,opt,name=console_height,json=consoleHeight,proto3" json:"console_height,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ContainerExecInitializationRequest) Reset() {
+	*x = ContainerExecInitializationRequest{}
+	mi := &file_container_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContainerExecInitializationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContainerExecInitializationRequest) ProtoMessage() {}
+
+func (x *ContainerExecInitializationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_container_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContainerExecInitializationRequest.ProtoReflect.Descriptor instead.
+func (*ContainerExecInitializationRequest) Descriptor() ([]byte, []int) {
+	return file_container_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ContainerExecInitializationRequest) GetIdentification() *ContainerIdentificationRequest {
+	if x != nil {
+		return x.Identification
+	}
+	return nil
+}
+
+func (x *ContainerExecInitializationRequest) GetConsoleWidth() int32 {
+	if x != nil {
+		return x.ConsoleWidth
+	}
+	return 0
+}
+
+func (x *ContainerExecInitializationRequest) GetConsoleHeight() int32 {
+	if x != nil {
+		return x.ConsoleHeight
+	}
+	return 0
+}
+
+type ContainerExecResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Output:
+	//
+	//	*ContainerExecResponse_Stdout
+	//	*ContainerExecResponse_ExitCode
+	Output        isContainerExecResponse_Output `protobuf_oneof:"output"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContainerExecResponse) Reset() {
+	*x = ContainerExecResponse{}
+	mi := &file_container_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContainerExecResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContainerExecResponse) ProtoMessage() {}
+
+func (x *ContainerExecResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_container_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContainerExecResponse.ProtoReflect.Descriptor instead.
+func (*ContainerExecResponse) Descriptor() ([]byte, []int) {
+	return file_container_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ContainerExecResponse) GetOutput() isContainerExecResponse_Output {
+	if x != nil {
+		return x.Output
+	}
+	return nil
+}
+
+func (x *ContainerExecResponse) GetStdout() []byte {
+	if x != nil {
+		if x, ok := x.Output.(*ContainerExecResponse_Stdout); ok {
+			return x.Stdout
+		}
+	}
+	return nil
+}
+
+func (x *ContainerExecResponse) GetExitCode() int32 {
+	if x != nil {
+		if x, ok := x.Output.(*ContainerExecResponse_ExitCode); ok {
+			return x.ExitCode
+		}
+	}
+	return 0
+}
+
+type isContainerExecResponse_Output interface {
+	isContainerExecResponse_Output()
+}
+
+type ContainerExecResponse_Stdout struct {
+	Stdout []byte `protobuf:"bytes,1,opt,name=stdout,proto3,oneof"`
+}
+
+type ContainerExecResponse_ExitCode struct {
+	ExitCode int32 `protobuf:"varint,2,opt,name=exit_code,json=exitCode,proto3,oneof"`
+}
+
+func (*ContainerExecResponse_Stdout) isContainerExecResponse_Output() {}
+
+func (*ContainerExecResponse_ExitCode) isContainerExecResponse_Output() {}
+
 var File_container_proto protoreflect.FileDescriptor
 
 const file_container_proto_rawDesc = "" +
@@ -217,14 +441,27 @@ const file_container_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
 	"\rprefix_length\x18\x03 \x01(\aR\fprefixLength\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\rR\x06status\x12\x14\n" +
+	"\x06status\x18\x04 \x01(\x05R\x06status\x12\x14\n" +
 	"\x05image\x18\x05 \x01(\tR\x05image\x128\n" +
-	"\tcreatedAt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt2\x9e\x02\n" +
+	"\tcreatedAt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x8f\x01\n" +
+	"\x14ContainerExecRequest\x12V\n" +
+	"\x0einitialization\x18\x01 \x01(\v2,.bx2cloud.ContainerExecInitializationRequestH\x00R\x0einitialization\x12\x16\n" +
+	"\x05stdin\x18\x02 \x01(\fH\x00R\x05stdinB\a\n" +
+	"\x05input\"\xc2\x01\n" +
+	"\"ContainerExecInitializationRequest\x12P\n" +
+	"\x0eidentification\x18\x01 \x01(\v2(.bx2cloud.ContainerIdentificationRequestR\x0eidentification\x12#\n" +
+	"\rconsole_width\x18\x02 \x01(\x05R\fconsoleWidth\x12%\n" +
+	"\x0econsole_height\x18\x03 \x01(\x05R\rconsoleHeight\"Z\n" +
+	"\x15ContainerExecResponse\x12\x18\n" +
+	"\x06stdout\x18\x01 \x01(\fH\x00R\x06stdout\x12\x1d\n" +
+	"\texit_code\x18\x02 \x01(\x05H\x00R\bexitCodeB\b\n" +
+	"\x06output2\xeb\x02\n" +
 	"\x10ContainerService\x12D\n" +
 	"\x03Get\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.Container\x125\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x13.bx2cloud.Container0\x01\x12A\n" +
 	"\x06Create\x12\".bx2cloud.ContainerCreationRequest\x1a\x13.bx2cloud.Container\x12J\n" +
-	"\x06Delete\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x16.google.protobuf.EmptyB,Z*github.com/BenasB/bx2cloud/internal/api/pbb\x06proto3"
+	"\x06Delete\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
+	"\x04Exec\x12\x1e.bx2cloud.ContainerExecRequest\x1a\x1f.bx2cloud.ContainerExecResponse(\x010\x01B,Z*github.com/BenasB/bx2cloud/internal/api/pbb\x06proto3"
 
 var (
 	file_container_proto_rawDescOnce sync.Once
@@ -238,29 +475,36 @@ func file_container_proto_rawDescGZIP() []byte {
 	return file_container_proto_rawDescData
 }
 
-var file_container_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_container_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_container_proto_goTypes = []any{
-	(*ContainerIdentificationRequest)(nil), // 0: bx2cloud.ContainerIdentificationRequest
-	(*ContainerCreationRequest)(nil),       // 1: bx2cloud.ContainerCreationRequest
-	(*Container)(nil),                      // 2: bx2cloud.Container
-	(*timestamppb.Timestamp)(nil),          // 3: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                  // 4: google.protobuf.Empty
+	(*ContainerIdentificationRequest)(nil),     // 0: bx2cloud.ContainerIdentificationRequest
+	(*ContainerCreationRequest)(nil),           // 1: bx2cloud.ContainerCreationRequest
+	(*Container)(nil),                          // 2: bx2cloud.Container
+	(*ContainerExecRequest)(nil),               // 3: bx2cloud.ContainerExecRequest
+	(*ContainerExecInitializationRequest)(nil), // 4: bx2cloud.ContainerExecInitializationRequest
+	(*ContainerExecResponse)(nil),              // 5: bx2cloud.ContainerExecResponse
+	(*timestamppb.Timestamp)(nil),              // 6: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                      // 7: google.protobuf.Empty
 }
 var file_container_proto_depIdxs = []int32{
-	3, // 0: bx2cloud.Container.createdAt:type_name -> google.protobuf.Timestamp
-	0, // 1: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
-	4, // 2: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
-	1, // 3: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
-	0, // 4: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
-	2, // 5: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
-	2, // 6: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
-	2, // 7: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
-	4, // 8: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
-	5, // [5:9] is the sub-list for method output_type
-	1, // [1:5] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	6, // 0: bx2cloud.Container.createdAt:type_name -> google.protobuf.Timestamp
+	4, // 1: bx2cloud.ContainerExecRequest.initialization:type_name -> bx2cloud.ContainerExecInitializationRequest
+	0, // 2: bx2cloud.ContainerExecInitializationRequest.identification:type_name -> bx2cloud.ContainerIdentificationRequest
+	0, // 3: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
+	7, // 4: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
+	1, // 5: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
+	0, // 6: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
+	3, // 7: bx2cloud.ContainerService.Exec:input_type -> bx2cloud.ContainerExecRequest
+	2, // 8: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
+	2, // 9: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
+	2, // 10: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
+	7, // 11: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
+	5, // 12: bx2cloud.ContainerService.Exec:output_type -> bx2cloud.ContainerExecResponse
+	8, // [8:13] is the sub-list for method output_type
+	3, // [3:8] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_container_proto_init() }
@@ -268,13 +512,21 @@ func file_container_proto_init() {
 	if File_container_proto != nil {
 		return
 	}
+	file_container_proto_msgTypes[3].OneofWrappers = []any{
+		(*ContainerExecRequest_Initialization)(nil),
+		(*ContainerExecRequest_Stdin)(nil),
+	}
+	file_container_proto_msgTypes[5].OneofWrappers = []any{
+		(*ContainerExecResponse_Stdout)(nil),
+		(*ContainerExecResponse_ExitCode)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_container_proto_rawDesc), len(file_container_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
