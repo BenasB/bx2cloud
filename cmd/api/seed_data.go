@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/id"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

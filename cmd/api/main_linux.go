@@ -4,8 +4,8 @@ import (
 	"log"
 	"net"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/network"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
 	"google.golang.org/grpc"
 )

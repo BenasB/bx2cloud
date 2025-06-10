@@ -1,6 +1,6 @@
 package shared
 
-import pb "github.com/BenasB/bx2cloud/internal/api"
+import "github.com/BenasB/bx2cloud/internal/api/pb"
 
 type NetworkModel = pb.Network
 type SubnetworkModel = pb.Subnetwork

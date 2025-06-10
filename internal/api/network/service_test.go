@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/network"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
 	"github.com/google/go-cmp/cmp"

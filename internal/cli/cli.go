@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/cli/exits"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
