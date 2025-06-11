@@ -129,22 +129,28 @@ func Exec(client pb.ContainerServiceClient, id uint32) error {
 	})
 
 	go func() {
-		buf := make([]byte, 1024)
+		buf := make([]byte, 8192)
 		for {
 			n, err := os.Stdin.Read(buf)
 			if err != nil {
-				break
+				return
 			}
 			if n > 0 {
-				stream.Send(&pb.ContainerExecRequest{
+				err = stream.Send(&pb.ContainerExecRequest{
 					Input: &pb.ContainerExecRequest_Stdin{Stdin: buf[:n]},
 				})
+				if err != nil {
+					return
+				}
 			}
 		}
 	}()
 
 	for {
 		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
@@ -152,8 +158,7 @@ func Exec(client pb.ContainerServiceClient, id uint32) error {
 		case *pb.ContainerExecResponse_Stdout:
 			os.Stdout.Write(p.Stdout)
 		case *pb.ContainerExecResponse_ExitCode:
-			fmt.Printf("\n[Exited with code %d]\n", p.ExitCode)
-			break
+			os.Stdout.WriteString(fmt.Sprintf("Exited with code %d\n", p.ExitCode))
 		}
 	}
 }

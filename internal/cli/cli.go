@@ -201,7 +201,7 @@ func Run(args []string) exits.ExitCode {
 		args = args[1:]
 
 		client := pb.NewContainerServiceClient(conn)
-		cmdErrCode = exits.SUBNETWORK_ERROR
+		cmdErrCode = exits.CONTAINER_ERROR
 
 		switch subcommand {
 		case "list":

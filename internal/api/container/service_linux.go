@@ -2,11 +2,15 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
@@ -86,29 +90,26 @@ func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.
 }
 
 func (s *Service) Exec(stream pb.ContainerService_ExecServer) error {
-	first, err := stream.Recv() // Expect StartExec first
+	first, err := stream.Recv()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read the stream to retrieve the first stream message: %w", err)
 	}
-	request := first.GetInitialization()
-	if request == nil {
-		return fmt.Errorf("First message in the stream is expected to initialize the command")
+	init := first.GetInitialization()
+	if init == nil {
+		return fmt.Errorf("first message in the stream is expected to be an initialization message")
 	}
 
-	container, err := s.repository.Get(request.Identification.Id)
+	container, err := s.repository.Get(init.Identification.Id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to retrieve the container for command execution: %w", err)
 	}
 
 	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
-	parentSocket := fds[1]
-	childSocket := fds[0]
 	if err != nil {
-		return fmt.Errorf("failed to create socket pair: %w", err)
+		return fmt.Errorf("failed to create a socket pair for console fd retrieval: %w", err)
 	}
-
-	parentConsoleSocket := os.NewFile(uintptr(parentSocket), "parent-console-socket")
-	childConsoleSocket := os.NewFile(uintptr(childSocket), "child-console-socket")
+	parentConsoleSocket := os.NewFile(uintptr(fds[1]), "parent-console-socket")
+	childConsoleSocket := os.NewFile(uintptr(fds[0]), "child-console-socket")
 	defer parentConsoleSocket.Close()
 	defer childConsoleSocket.Close()
 
@@ -118,54 +119,99 @@ func (s *Service) Exec(stream pb.ContainerService_ExecServer) error {
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		},
 		ConsoleSocket: childConsoleSocket,
-		ConsoleWidth:  uint16(request.ConsoleWidth),
-		ConsoleHeight: uint16(request.ConsoleHeight),
+		ConsoleWidth:  uint16(init.ConsoleWidth),
+		ConsoleHeight: uint16(init.ConsoleHeight),
 		Init:          false,
 	}
 
-	if err := container.Run(process); err != nil {
-		return err
+	if err := container.Start(process); err != nil {
+		return fmt.Errorf("failed to start the container process: %w", err)
 	}
 
 	ptyMaster, err := utils.RecvFile(parentConsoleSocket)
 	if err != nil {
-		return fmt.Errorf("failed to receive pty master fd: %w", err)
+		return fmt.Errorf("failed to receive console master fd: %w", err)
 	}
 	parentConsoleSocket.Close()
 	childConsoleSocket.Close()
 	defer ptyMaster.Close()
 
+	log.Printf("Established an interactive console session with container id %d", init.Identification.Id)
+
+	results := make(chan error, 2)
 	go func() {
-		buf := make([]byte, 1024)
+		buf := make([]byte, 8192)
 		for {
 			n, err := ptyMaster.Read(buf)
-			if n > 0 {
-				log.Printf("Bytes sent: %d\n", n)
-				stream.Send(&pb.ContainerExecResponse{
-					Output: &pb.ContainerExecResponse_Stdout{Stdout: buf[:n]},
-				})
+			if errors.Is(err, unix.EIO) {
+				// pty child was closed, which is considered a successfull result
+				results <- nil
+				return
 			}
 			if err != nil {
-				log.Print(err)
-				break
+				results <- fmt.Errorf("failed to read master console: %w", err)
+				return
+			}
+			if n > 0 {
+				err = stream.Send(&pb.ContainerExecResponse{
+					Output: &pb.ContainerExecResponse_Stdout{Stdout: buf[:n]},
+				})
+				if err != nil {
+					results <- fmt.Errorf("failed to send bytes from the master console to the client: %w", err)
+					return
+				}
 			}
 		}
 	}()
 
-	for {
-		req, err := stream.Recv()
-		if err != nil {
-			break
-		}
+	go func() {
+		for {
+			req, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				results <- fmt.Errorf("client disconnected: %w", err)
+				return
+			}
+			if err != nil {
+				results <- fmt.Errorf("failed to read from the client stream: %w", err)
+				return
+			}
 
-		switch p := req.Input.(type) {
-		case *pb.ContainerExecRequest_Stdin:
-			log.Printf("Bytes received: %d\n", len(p.Stdin))
-			if _, err := ptyMaster.Write(p.Stdin); err != nil {
-				return err
+			if p := req.GetStdin(); p != nil {
+				if _, err := ptyMaster.Write(p); err != nil {
+					results <- fmt.Errorf("failed to write to the master console: %w", err)
+					return
+				}
 			}
 		}
+	}()
+
+	err = <-results
+
+	if err != nil {
+		if signalErr := process.Signal(syscall.SIGKILL); signalErr != nil {
+			return fmt.Errorf("failed to kill the exec process: %w, when the original error was: %w", signalErr, err)
+		}
 	}
+
+	state, err := process.Wait()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) {
+			return fmt.Errorf("failed to retrieve the state of the process: %w", err)
+		}
+	}
+
+	err = stream.Send(&pb.ContainerExecResponse{
+		Output: &pb.ContainerExecResponse_ExitCode{
+			ExitCode: int32(state.ExitCode()),
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to send the exit code: %w", err)
+	}
+
+	log.Printf("Successfully finished an interactive console session with container id %d", init.Identification.Id)
 
 	return nil
 }
