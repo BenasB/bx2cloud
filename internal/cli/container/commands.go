@@ -107,13 +107,31 @@ func Create(client pb.ContainerServiceClient) error {
 }
 
 func Exec(client pb.ContainerServiceClient, id uint32) error {
-	oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
-	rows, cols, _ := term.GetSize(int(os.Stdin.Fd())) // TODO: terminal size?
+	termFd := int(os.Stdin.Fd())
+
+	if !term.IsTerminal(termFd) {
+		return fmt.Errorf("standard input must be a terminal for container exec")
+	}
+
+	oldState, err := term.MakeRaw(termFd)
+	if err != nil {
+		return fmt.Errorf("failed to put the terminal into a raw mode: %w", err)
+	}
+	defer term.Restore(termFd, oldState)
+
+	width, height, err := term.GetSize(termFd)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve the size of the terminal: %w", err)
+	}
 
 	stream, err := client.Exec(context.Background())
 	if err != nil {
 		return err
+	}
+
+	var terminal *string
+	if envTerm, ok := os.LookupEnv("TERM"); ok {
+		terminal = &envTerm
 	}
 
 	stream.Send(&pb.ContainerExecRequest{
@@ -122,8 +140,9 @@ func Exec(client pb.ContainerServiceClient, id uint32) error {
 				Identification: &pb.ContainerIdentificationRequest{
 					Id: id,
 				},
-				ConsoleWidth:  int32(cols),
-				ConsoleHeight: int32(rows),
+				ConsoleWidth:  int32(width),
+				ConsoleHeight: int32(height),
+				Terminal:      terminal,
 			},
 		},
 	})
@@ -146,10 +165,11 @@ func Exec(client pb.ContainerServiceClient, id uint32) error {
 		}
 	}()
 
+	var exitCode int
 	for {
 		resp, err := stream.Recv()
 		if err == io.EOF {
-			return nil
+			break
 		}
 		if err != nil {
 			return err
@@ -158,7 +178,15 @@ func Exec(client pb.ContainerServiceClient, id uint32) error {
 		case *pb.ContainerExecResponse_Stdout:
 			os.Stdout.Write(p.Stdout)
 		case *pb.ContainerExecResponse_ExitCode:
-			os.Stdout.WriteString(fmt.Sprintf("Exited with code %d\n", p.ExitCode))
+			exitCode = int(p.ExitCode)
 		}
 	}
+
+	if err := term.Restore(termFd, oldState); err != nil {
+		return err
+	}
+
+	fmt.Printf("Exited with code %d\n", exitCode)
+
+	return nil
 }

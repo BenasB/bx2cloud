@@ -113,10 +113,16 @@ func (s *Service) Exec(stream pb.ContainerService_ExecServer) error {
 	defer parentConsoleSocket.Close()
 	defer childConsoleSocket.Close()
 
+	term := "xterm"
+	if init.Terminal != nil {
+		term = *init.Terminal
+	}
+
 	process := &libcontainer.Process{
-		Args: []string{"/bin/sh"},
+		Args: []string{"/bin/bash"},
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+			fmt.Sprintf("TERM=%s", term),
 		},
 		ConsoleSocket: childConsoleSocket,
 		ConsoleWidth:  uint16(init.ConsoleWidth),

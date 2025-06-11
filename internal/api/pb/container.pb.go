@@ -290,6 +290,7 @@ type ContainerExecInitializationRequest struct {
 	Identification *ContainerIdentificationRequest `protobuf:"bytes,1,opt,name=identification,proto3" json:"identification,omitempty"`
 	ConsoleWidth   int32                           `protobuf:"varint,2,opt,name=console_width,json=consoleWidth,proto3" json:"console_width,omitempty"`
 	ConsoleHeight  int32                           `protobuf:"varint,3,opt,name=console_height,json=consoleHeight,proto3" json:"console_height,omitempty"`
+	Terminal       *string                         `protobuf:"bytes,4,opt,name=terminal,proto3,oneof" json:"terminal,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -343,6 +344,13 @@ func (x *ContainerExecInitializationRequest) GetConsoleHeight() int32 {
 		return x.ConsoleHeight
 	}
 	return 0
+}
+
+func (x *ContainerExecInitializationRequest) GetTerminal() string {
+	if x != nil && x.Terminal != nil {
+		return *x.Terminal
+	}
+	return ""
 }
 
 type ContainerExecResponse struct {
@@ -447,11 +455,13 @@ const file_container_proto_rawDesc = "" +
 	"\x14ContainerExecRequest\x12V\n" +
 	"\x0einitialization\x18\x01 \x01(\v2,.bx2cloud.ContainerExecInitializationRequestH\x00R\x0einitialization\x12\x16\n" +
 	"\x05stdin\x18\x02 \x01(\fH\x00R\x05stdinB\a\n" +
-	"\x05input\"\xc2\x01\n" +
+	"\x05input\"\xf0\x01\n" +
 	"\"ContainerExecInitializationRequest\x12P\n" +
 	"\x0eidentification\x18\x01 \x01(\v2(.bx2cloud.ContainerIdentificationRequestR\x0eidentification\x12#\n" +
 	"\rconsole_width\x18\x02 \x01(\x05R\fconsoleWidth\x12%\n" +
-	"\x0econsole_height\x18\x03 \x01(\x05R\rconsoleHeight\"Z\n" +
+	"\x0econsole_height\x18\x03 \x01(\x05R\rconsoleHeight\x12\x1f\n" +
+	"\bterminal\x18\x04 \x01(\tH\x00R\bterminal\x88\x01\x01B\v\n" +
+	"\t_terminal\"Z\n" +
 	"\x15ContainerExecResponse\x12\x18\n" +
 	"\x06stdout\x18\x01 \x01(\fH\x00R\x06stdout\x12\x1d\n" +
 	"\texit_code\x18\x02 \x01(\x05H\x00R\bexitCodeB\b\n" +
@@ -516,6 +526,7 @@ func file_container_proto_init() {
 		(*ContainerExecRequest_Initialization)(nil),
 		(*ContainerExecRequest_Stdin)(nil),
 	}
+	file_container_proto_msgTypes[4].OneofWrappers = []any{}
 	file_container_proto_msgTypes[5].OneofWrappers = []any{
 		(*ContainerExecResponse_Stdout)(nil),
 		(*ContainerExecResponse_ExitCode)(nil),
