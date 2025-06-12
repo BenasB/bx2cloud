@@ -22,18 +22,22 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type Service struct {
+type service struct {
 	pb.UnimplementedContainerServiceServer
-	repository shared.ContainerRepository
+	repository           shared.ContainerRepository
+	subnetworkRepository shared.SubnetworkRepository
+	configurator         configurator
 }
 
-func NewService(repository shared.ContainerRepository) *Service {
-	return &Service{
-		repository: repository,
+func NewService(containerRepository shared.ContainerRepository, subnetworkRepository shared.SubnetworkRepository, configurator configurator) *service {
+	return &service{
+		repository:           containerRepository,
+		subnetworkRepository: subnetworkRepository,
+		configurator:         configurator,
 	}
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.ContainerIdentificationRequest) (*pb.Container, error) {
+func (s *service) Get(ctx context.Context, req *pb.ContainerIdentificationRequest) (*pb.Container, error) {
 	container, err := s.repository.Get(req.Id)
 	if err != nil {
 		return nil, err
@@ -42,7 +46,7 @@ func (s *Service) Get(ctx context.Context, req *pb.ContainerIdentificationReques
 	return mapModelToDto(container)
 }
 
-func (s *Service) Delete(ctx context.Context, req *pb.ContainerIdentificationRequest) (*emptypb.Empty, error) {
+func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationRequest) (*emptypb.Empty, error) {
 	_, err := s.repository.Delete(req.Id)
 	if err != nil {
 		return nil, err
@@ -51,16 +55,30 @@ func (s *Service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) Create(ctx context.Context, req *pb.ContainerCreationRequest) (*pb.Container, error) {
+func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) (*pb.Container, error) {
+	// TODO: take data from req
+	subnetwork, err := s.subnetworkRepository.Get(4)
+	if err != nil {
+		return nil, err
+	}
+
 	container, err := s.repository.Add("ubuntu:24.04")
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.configure(container, subnetwork); err != nil {
+		return nil, err
+	}
+
+	if err := container.Exec(); err != nil {
 		return nil, err
 	}
 
 	return mapModelToDto(container)
 }
 
-func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Container]) error {
+func (s *service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Container]) error {
 	containers, errors := s.repository.GetAll(stream.Context())
 
 	for {
@@ -89,7 +107,7 @@ func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.
 	}
 }
 
-func (s *Service) Exec(stream pb.ContainerService_ExecServer) error {
+func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	first, err := stream.Recv()
 	if err != nil {
 		return fmt.Errorf("failed to read the stream to retrieve the first stream message: %w", err)

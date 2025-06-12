@@ -10,26 +10,26 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type Service struct {
+type service struct {
 	pb.UnimplementedNetworkServiceServer
 	repository           shared.NetworkRepository
 	subnetworkRepository shared.SubnetworkRepository
 	configurator         configurator
 }
 
-func NewService(repository shared.NetworkRepository, subnetworkRepository shared.SubnetworkRepository, configurator configurator) *Service {
-	return &Service{
+func NewService(repository shared.NetworkRepository, subnetworkRepository shared.SubnetworkRepository, configurator configurator) *service {
+	return &service{
 		repository:           repository,
 		subnetworkRepository: subnetworkRepository,
 		configurator:         configurator,
 	}
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.NetworkIdentificationRequest) (*pb.Network, error) {
+func (s *service) Get(ctx context.Context, req *pb.NetworkIdentificationRequest) (*pb.Network, error) {
 	return s.repository.Get(req.Id)
 }
 
-func (s *Service) Delete(ctx context.Context, req *pb.NetworkIdentificationRequest) (*emptypb.Empty, error) {
+func (s *service) Delete(ctx context.Context, req *pb.NetworkIdentificationRequest) (*emptypb.Empty, error) {
 	subnetworks, errors := s.subnetworkRepository.GetAllByNetworkId(req.Id, ctx)
 	select {
 	case subnetwork, ok := <-subnetworks:
@@ -55,7 +55,7 @@ func (s *Service) Delete(ctx context.Context, req *pb.NetworkIdentificationReque
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*pb.Network, error) {
+func (s *service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*pb.Network, error) {
 	newNetwork := &shared.NetworkModel{
 		InternetAccess: req.InternetAccess,
 	}
@@ -73,7 +73,7 @@ func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*
 	return returnedNetwork, nil
 }
 
-func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb.Network, error) {
+func (s *service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb.Network, error) {
 	network, err := s.repository.Update(req.Identification.Id, func(sn *shared.NetworkModel) {
 		sn.InternetAccess = req.Update.InternetAccess
 	})
@@ -89,7 +89,7 @@ func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb
 	return network, nil
 }
 
-func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Network]) error {
+func (s *service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Network]) error {
 	networks, errors := s.repository.GetAll(stream.Context())
 
 	for {

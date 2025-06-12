@@ -9,54 +9,48 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type Service struct {
+type service struct {
 	pb.UnimplementedSubnetworkServiceServer
 	repository        shared.SubnetworkRepository
 	networkRepository shared.NetworkRepository
 	configurator      configurator
 }
 
-func NewService(subnetworkRepository shared.SubnetworkRepository, networkRepository shared.NetworkRepository, configurator configurator) *Service {
-	return &Service{
+func NewService(subnetworkRepository shared.SubnetworkRepository, networkRepository shared.NetworkRepository, configurator configurator) *service {
+	return &service{
 		repository:        subnetworkRepository,
 		networkRepository: networkRepository,
 		configurator:      configurator,
 	}
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*pb.Subnetwork, error) {
+func (s *service) Get(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*pb.Subnetwork, error) {
 	return s.repository.Get(req.Id)
 }
 
-func (s *Service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
+func (s *service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
 	subnetwork, err := s.repository.Delete(req.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	network, err := s.networkRepository.Get(subnetwork.NetworkId)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Handle things that are connected to this subnetwork
 
-	if err := s.configurator.unconfigure(subnetwork, network); err != nil {
+	if err := s.configurator.unconfigure(subnetwork); err != nil {
 		return nil, err
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*pb.Subnetwork, error) {
-	network, err := s.networkRepository.Get(req.NetworkId)
-	if err != nil {
+func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*pb.Subnetwork, error) {
+	if _, err := s.networkRepository.Get(req.NetworkId); err != nil {
 		return nil, err
 	}
 
 	newSubnetwork := &shared.SubnetworkModel{
 		NetworkId:    req.NetworkId,
-		Address:      req.Address, // TODO: AND address with network mask to make sure this stores the network IP + unit test
+		Address:      req.Address, // TODO: #1 AND address with network mask to make sure this stores the network IP + unit test
 		PrefixLength: req.PrefixLength,
 	}
 
@@ -65,14 +59,14 @@ func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 		return nil, err
 	}
 
-	if err := s.configurator.configure(returnedSubnetwork, network); err != nil {
+	if err := s.configurator.configure(returnedSubnetwork); err != nil {
 		return nil, err
 	}
 
 	return returnedSubnetwork, nil
 }
 
-func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*pb.Subnetwork, error) {
+func (s *service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*pb.Subnetwork, error) {
 	subnetwork, err := s.repository.Update(req.Identification.Id, func(sn *shared.SubnetworkModel) {
 		sn.Address = req.Update.Address
 		sn.PrefixLength = req.Update.PrefixLength
@@ -82,19 +76,14 @@ func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (
 		return nil, err
 	}
 
-	network, err := s.networkRepository.Get(subnetwork.NetworkId)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.configurator.configure(subnetwork, network); err != nil {
+	if err := s.configurator.configure(subnetwork); err != nil {
 		return nil, err
 	}
 
 	return subnetwork, nil
 }
 
-func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Subnetwork]) error {
+func (s *service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Subnetwork]) error {
 	subnetworks, errors := s.repository.GetAll(stream.Context())
 
 	for {

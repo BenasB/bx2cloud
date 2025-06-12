@@ -29,11 +29,19 @@ func main() {
 	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
 	subnetworkConfigurator := subnetwork.NewBridgeConfigurator(networkConfigurator.GetNetworkNamespaceName)
 
-	containerRepository := container.NewLibcontainerRepository()
+	containerRepository, err := container.NewLibcontainerRepository()
+	if err != nil {
+		log.Fatalf("failed to create the container repository: %v", err)
+	}
+
+	containerConfigurator := container.NewNamespaceConfigurator(
+		networkConfigurator.GetNetworkNamespaceName,
+		subnetworkConfigurator.GetBridgeName,
+	)
 
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
 	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator))
-	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository))
+	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator))
 
 	log.Printf("Starting server on %s", address)
 	if err := grpcServer.Serve(lis); err != nil {
