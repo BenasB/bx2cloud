@@ -12,8 +12,6 @@ service ContainerService {
     rpc Create (ContainerCreationRequest) returns (Container);
     rpc Delete (ContainerIdentificationRequest) returns (google.protobuf.Empty);
     rpc Exec (stream ContainerExecRequest) returns (stream ContainerExecResponse);
-    // rpc Start (ContainerIdentificationRequest) returns (?);
-    // rpc Stop (ContainerIdentificationRequest) returns (?);
 }
 
 message ContainerIdentificationRequest {

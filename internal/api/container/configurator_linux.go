@@ -102,7 +102,6 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 		}
 	}
 
-	// TODO: Go into container namespace, add ip to interface, interface up, add default gateway route
 	if err := netns.Set(containerNs); err != nil {
 		return fmt.Errorf("failed to switch to the network namespace of the container: %w", err)
 	}
@@ -195,7 +194,41 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 }
 
 func (n *namespaceConfigurator) unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
-	panic("unimplemented")
+	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
+	networkNs, err := netns.GetFromName(networkNsName)
+	defer networkNs.Close()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve the network's namespace: %w", err)
+	}
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	origNs, err := netns.Get()
+	defer origNs.Close()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
+	}
+	defer func() {
+		if err := netns.Set(origNs); err != nil {
+			panic("failed to move back to the original network namespace, panicking to not change unexpected state")
+		}
+	}()
+
+	if err := netns.Set(networkNs); err != nil {
+		return fmt.Errorf("failed to switch to the network's namespace: %w", err)
+	}
+
+	networkVethName := n.getNetworkVethName(model)
+	if networkVeth, err := netlink.LinkByName(networkVethName); err == nil {
+		if err := netlink.LinkDel(networkVeth); err != nil {
+			return fmt.Errorf("failed to remove the veth pair: %w", err)
+		}
+	}
+
+	if err := netns.Set(origNs); err != nil {
+		return fmt.Errorf("failed to switch to the original network namespace: %w", err)
+	}
 
 	log.Printf("Successfully unconfigured container with the id %s", model.ID())
 

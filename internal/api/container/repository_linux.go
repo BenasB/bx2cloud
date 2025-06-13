@@ -3,7 +3,9 @@ package container
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/BenasB/bx2cloud/internal/api/id"
@@ -25,6 +27,49 @@ func NewLibcontainerRepository() (shared.ContainerRepository, error) {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, err
 	}
+
+	os.ReadDir(root)
+	list, err := os.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
+
+	var maxId *uint32
+	for _, item := range list {
+		if !item.IsDir() {
+			continue
+		}
+
+		f, err := os.Open(filepath.Join(root, item.Name()))
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+
+		_, err = f.Readdirnames(1)
+		if err == io.EOF { // Is the container state directory empty
+			if err := os.Remove(f.Name()); err != nil {
+				return nil, fmt.Errorf("failed to remove an empty container state directory: %w", err)
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		id64, err := strconv.ParseUint(item.Name(), 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert a container state directory name to an integer id: %w", err)
+		}
+		id := uint32(id64)
+		if maxId == nil || *maxId < id {
+			maxId = &id
+		}
+	}
+
+	if maxId != nil {
+		_ = id.Skip("container", *maxId)
+	}
+
 	return &libcontainerRepository{
 		root: root,
 	}, nil
@@ -72,7 +117,7 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.Con
 }
 
 // Returns a container in a started state
-func (r *libcontainerRepository) Add(image string) (*shared.ContainerModel, error) {
+func (r *libcontainerRepository) Add(image string, subnetworkId uint32) (*shared.ContainerModel, error) {
 	id := id.NextId("container")
 
 	spec := &specs.Spec{
@@ -116,7 +161,8 @@ func (r *libcontainerRepository) Add(image string) (*shared.ContainerModel, erro
 			},
 		},
 		Annotations: map[string]string{
-			"image": image,
+			"image":        image,
+			"subnetworkId": strconv.FormatUint(uint64(subnetworkId), 10),
 		},
 		Hostname: fmt.Sprintf("container-%d", id),
 	}
@@ -129,7 +175,7 @@ func (r *libcontainerRepository) Add(image string) (*shared.ContainerModel, erro
 		Spec:             spec,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create the libcontainer config: %w\n", err)
+		return nil, fmt.Errorf("failed to create the libcontainer config: %w", err)
 	}
 
 	container, err := libcontainer.Create(
@@ -138,7 +184,7 @@ func (r *libcontainerRepository) Add(image string) (*shared.ContainerModel, erro
 		config,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create the container: %w\n", err)
+		return nil, fmt.Errorf("failed to create the container: %w", err)
 	}
 
 	initProcess := &libcontainer.Process{
@@ -150,7 +196,7 @@ func (r *libcontainerRepository) Add(image string) (*shared.ContainerModel, erro
 	}
 
 	if err := container.Start(initProcess); err != nil {
-		return nil, fmt.Errorf("failed to run the container: %w\n", err)
+		return nil, fmt.Errorf("failed to run the container: %w", err)
 	}
 
 	return container, nil
@@ -162,10 +208,7 @@ func (r *libcontainerRepository) Delete(id uint32) (*shared.ContainerModel, erro
 		return nil, err
 	}
 
-	// TODO: container.Signal as per Destroy's description?
-	err = container.Destroy()
-
-	if err != nil {
+	if err := container.Destroy(); err != nil {
 		return nil, err
 	}
 

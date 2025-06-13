@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"syscall"
+	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
@@ -47,7 +47,62 @@ func (s *service) Get(ctx context.Context, req *pb.ContainerIdentificationReques
 }
 
 func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationRequest) (*emptypb.Empty, error) {
-	_, err := s.repository.Delete(req.Id)
+	container, err := s.repository.Get(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	status, err := container.Status()
+	if err != nil {
+		log.Printf("Will skip killing the container process, since we can't determine if the container is in a running status: %v", err)
+	}
+
+	if err == nil && status == libcontainer.Running {
+		if err := container.Signal(unix.SIGKILL); err != nil {
+			return nil, fmt.Errorf("failed to send a kill signal to the container process: %w", err)
+		}
+		processIsRunning := true
+		for range 100 {
+			time.Sleep(100 * time.Millisecond)
+			if err := container.Signal(unix.Signal(0)); err != nil {
+				processIsRunning = false
+				break // Process is no longer running
+			}
+		}
+
+		if processIsRunning {
+			return nil, fmt.Errorf("failed to kill the container process: %w", err)
+		}
+	}
+
+	var subnetworkId *uint32
+	for _, label := range container.Config().Labels {
+		after, found := strings.CutPrefix(label, "subnetworkId=")
+		if found {
+			id64, err := strconv.ParseUint(after, 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse the container's subnetwork id: %w", err)
+			}
+			id32 := uint32(id64)
+			subnetworkId = &id32
+			break
+		}
+	}
+
+	if subnetworkId == nil {
+		return nil, fmt.Errorf("failed to retrieve the container's subnetwork id: %w", err)
+	}
+
+	subnetwork, err := s.subnetworkRepository.Get(*subnetworkId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.unconfigure(container, subnetwork); err != nil {
+		return nil, err
+	}
+
+	_, err = s.repository.Delete(req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -56,13 +111,12 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 }
 
 func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) (*pb.Container, error) {
-	// TODO: take data from req
-	subnetwork, err := s.subnetworkRepository.Get(4)
+	subnetwork, err := s.subnetworkRepository.Get(req.SubnetworkId)
 	if err != nil {
 		return nil, err
 	}
 
-	container, err := s.repository.Add("ubuntu:24.04")
+	container, err := s.repository.Add(req.Image, subnetwork.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +266,7 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	err = <-results
 
 	if err != nil {
-		if signalErr := process.Signal(syscall.SIGKILL); signalErr != nil {
+		if signalErr := process.Signal(unix.SIGKILL); signalErr != nil {
 			return fmt.Errorf("failed to kill the exec process: %w, when the original error was: %w", signalErr, err)
 		}
 	}

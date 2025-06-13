@@ -93,7 +93,8 @@ func Create(client pb.ContainerServiceClient) error {
 	// }
 
 	req := &pb.ContainerCreationRequest{
-		// TODO: Init from yaml
+		SubnetworkId: 4,
+		Image:        "ubuntu:24.04",
 	}
 
 	resp, err := client.Create(context.Background(), req)
