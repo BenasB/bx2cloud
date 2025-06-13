@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -116,7 +117,7 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		return nil, err
 	}
 
-	container, err := s.repository.Add(req.Image, subnetwork.Id)
+	container, err := s.repository.Add(req.Image, subnetwork)
 	if err != nil {
 		return nil, err
 	}
@@ -313,11 +314,26 @@ func mapModelToDto(container *shared.ContainerModel) (*pb.Container, error) {
 	config := container.Config()
 
 	var image string
+	var containerIpNet *net.IPNet
 	for _, label := range config.Labels {
-		after, found := strings.CutPrefix(label, "image=")
-		if found {
-			image = after
-			break
+		afterImage, foundImage := strings.CutPrefix(label, "image=")
+		if foundImage {
+			image = afterImage
+			continue
+		}
+
+		afterIp, foundIp := strings.CutPrefix(label, "ip=")
+		if foundIp {
+			ip, ipNet, err := net.ParseCIDR(afterIp)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse the container's IP: %w", err)
+			}
+
+			containerIpNet = &net.IPNet{
+				IP:   ip.To4(),
+				Mask: ipNet.Mask,
+			}
+			continue
 		}
 	}
 
@@ -325,10 +341,17 @@ func mapModelToDto(container *shared.ContainerModel) (*pb.Container, error) {
 		return nil, fmt.Errorf("failed to locate metadata about the container's image")
 	}
 
+	if containerIpNet == nil {
+		return nil, fmt.Errorf("failed to locate metadata about the container's ip")
+	}
+
+	address := uint32(containerIpNet.IP[0])<<24 | uint32(containerIpNet.IP[1])<<16 | uint32(containerIpNet.IP[2])<<8 | uint32(containerIpNet.IP[3])
+	prefixLength, _ := containerIpNet.Mask.Size()
+
 	return &pb.Container{
 		Id:           uint32(id),
-		Address:      0, // TODO
-		PrefixLength: 0, // TODO
+		Address:      address,
+		PrefixLength: uint32(prefixLength),
 		Status:       int32(status),
 		Image:        image,
 		CreatedAt:    timestamppb.New(state.Created),

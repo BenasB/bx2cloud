@@ -2,6 +2,7 @@ package shared
 
 import (
 	"context"
+	"net"
 )
 
 type NetworkRepository interface {
@@ -20,4 +21,10 @@ type SubnetworkRepository interface {
 	Add(subnetwork *SubnetworkModel) (*SubnetworkModel, error)
 	Delete(id uint32) (*SubnetworkModel, error)
 	Update(id uint32, updateFn func(*SubnetworkModel)) (*SubnetworkModel, error)
+}
+
+type IpamRepository interface {
+	GetSubnetworkGateway(subnetwork *SubnetworkModel) *net.IPNet
+	Allocate(subnetwork *SubnetworkModel, resourceType IpamType) (*net.IPNet, error)
+	Deallocate(subnetwork *SubnetworkModel, ip *net.IPNet) error
 }

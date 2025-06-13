@@ -34,7 +34,7 @@ func (s *service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRe
 		return nil, err
 	}
 
-	// TODO: Handle things that are connected to this subnetwork
+	// TODO: (This PR) Handle things that are connected to this subnetwork
 
 	if err := s.configurator.unconfigure(subnetwork); err != nil {
 		return nil, err
@@ -47,6 +47,8 @@ func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 	if _, err := s.networkRepository.Get(req.NetworkId); err != nil {
 		return nil, err
 	}
+
+	// TODO: (This PR) Check if subnet does not overlap with other subnets in the network
 
 	newSubnetwork := &shared.SubnetworkModel{
 		NetworkId:    req.NetworkId,

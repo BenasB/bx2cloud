@@ -81,7 +81,7 @@ func Run(args []string) exits.ExitCode {
 			}
 			cmdErr = network.Delete(client, uint32(id))
 		case "create":
-			// TODO: Read a file and fallback to os.Stdin if no file is supplied
+			// TODO: #2 Read a file and fallback to os.Stdin if no file is supplied
 			yamlBytes, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				cmdErr = err

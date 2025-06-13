@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 	"runtime"
-	"strconv"
+	"strings"
 
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -23,12 +23,14 @@ var _ configurator = &namespaceConfigurator{}
 type namespaceConfigurator struct {
 	getNetworkNamespaceName func(uint32) string
 	getBridgeName           func(uint32) string
+	ipamRepository          shared.IpamRepository
 }
 
-func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBridgeName func(uint32) string) *namespaceConfigurator {
+func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBridgeName func(uint32) string, ipamRepository shared.IpamRepository) *namespaceConfigurator {
 	return &namespaceConfigurator{
 		getNetworkNamespaceName: getNetworkNamespaceName,
 		getBridgeName:           getBridgeName,
+		ipamRepository:          ipamRepository,
 	}
 }
 
@@ -50,6 +52,27 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 	defer containerNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the network namespace of the container from the file path: %w", err)
+	}
+
+	var containerVethIpNet *net.IPNet
+	for _, label := range model.Config().Labels {
+		after, found := strings.CutPrefix(label, "ip=")
+		if found {
+			ip, ipNet, err := net.ParseCIDR(after)
+			if err != nil {
+				return fmt.Errorf("failed to parse the container's IP: %w", err)
+			}
+
+			containerVethIpNet = &net.IPNet{
+				IP:   ip.To4(),
+				Mask: ipNet.Mask,
+			}
+			break
+		}
+	}
+
+	if containerVethIpNet == nil {
+		return fmt.Errorf("failed to retrieve the container's IP: %w", err)
 	}
 
 	runtime.LockOSThread()
@@ -116,17 +139,8 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 		return fmt.Errorf("failed to retrieve IP addresses of the container's namespace veth end: %w", err)
 	}
 
-	// TODO: IPAM
-	id, err := strconv.ParseUint(model.ID(), 10, 32)
-	if err != nil {
-		return fmt.Errorf("failed to convert the container's ID to an integer: %w", err)
-	}
-	containerVethIp := subnetworkModel.Address + 1 + uint32(id)
 	containerVethAddr := &netlink.Addr{
-		IPNet: &net.IPNet{
-			IP:   net.IPv4(byte(containerVethIp>>24), byte(containerVethIp>>16), byte(containerVethIp>>8), byte(containerVethIp)),
-			Mask: net.CIDRMask(int(subnetworkModel.PrefixLength), 32),
-		},
+		IPNet: containerVethIpNet,
 	}
 
 	var containerVethIpExists = false
@@ -153,14 +167,13 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 		}
 	}
 
-	gwIp := subnetworkModel.Address + 1 // TODO: IPAM
 	defaultRoute := &netlink.Route{
 		LinkIndex: containerVeth.Attrs().Index,
 		Dst: &net.IPNet{
 			IP:   net.IPv4zero,
 			Mask: net.CIDRMask(0, 32),
 		}, // default, 0.0.0.0/0
-		Gw: net.IPv4(byte(gwIp>>24), byte(gwIp>>16), byte(gwIp>>8), byte(gwIp)),
+		Gw: n.ipamRepository.GetSubnetworkGateway(subnetworkModel).IP,
 	}
 
 	routes, err := netlink.RouteList(containerVeth, netlink.FAMILY_V4)

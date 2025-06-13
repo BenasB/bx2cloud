@@ -3,7 +3,6 @@ package subnetwork
 import (
 	"fmt"
 	"log"
-	"net"
 	"runtime"
 
 	"github.com/BenasB/bx2cloud/internal/api/shared"
@@ -15,11 +14,13 @@ var _ configurator = &bridgeConfigurator{}
 
 type bridgeConfigurator struct {
 	getNetworkNamespaceName func(uint32) string
+	ipamRepository          shared.IpamRepository
 }
 
-func NewBridgeConfigurator(getNetworkNamespaceName func(uint32) string) *bridgeConfigurator {
+func NewBridgeConfigurator(getNetworkNamespaceName func(uint32) string, ipamRepository shared.IpamRepository) *bridgeConfigurator {
 	return &bridgeConfigurator{
 		getNetworkNamespaceName: getNetworkNamespaceName,
+		ipamRepository:          ipamRepository,
 	}
 }
 
@@ -70,7 +71,9 @@ func (b *bridgeConfigurator) configure(model *shared.SubnetworkModel) error {
 		return fmt.Errorf("failed to retrieve IP addresses of the bridge: %w", err)
 	}
 
-	bridgeAddr := b.getBridgeAddr(model)
+	bridgeAddr := &netlink.Addr{
+		IPNet: b.ipamRepository.GetSubnetworkGateway(model),
+	}
 
 	var expectedIpExists = false
 	for _, addr := range bridgeAddrs {
@@ -149,15 +152,4 @@ func (b *bridgeConfigurator) unconfigure(model *shared.SubnetworkModel) error {
 
 func (b *bridgeConfigurator) GetBridgeName(id uint32) string {
 	return fmt.Sprintf("bx2-br-%d", id)
-}
-
-func (b *bridgeConfigurator) getBridgeAddr(model *shared.SubnetworkModel) *netlink.Addr {
-	bridgeIp := model.Address + 1
-
-	return &netlink.Addr{
-		IPNet: &net.IPNet{
-			IP:   net.IPv4(byte(bridgeIp>>24), byte(bridgeIp>>16), byte(bridgeIp>>8), byte(bridgeIp)),
-			Mask: net.CIDRMask(int(model.PrefixLength), 32),
-		},
-	}
 }

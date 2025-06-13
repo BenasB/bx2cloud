@@ -8,6 +8,7 @@ import (
 	"github.com/BenasB/bx2cloud/internal/api/network"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
+	"github.com/BenasB/bx2cloud/internal/api/subnetwork/ipam"
 	"google.golang.org/grpc"
 )
 
@@ -20,6 +21,8 @@ func main() {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 
+	ipamRepository := ipam.NewMemoryRepository()
+
 	networkRepository := network.NewMemoryRepository(sampleNetworks)
 	networkConfigurator, err := network.NewNamespaceConfigurator()
 	if err != nil {
@@ -27,9 +30,9 @@ func main() {
 	}
 
 	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
-	subnetworkConfigurator := subnetwork.NewBridgeConfigurator(networkConfigurator.GetNetworkNamespaceName)
+	subnetworkConfigurator := subnetwork.NewBridgeConfigurator(networkConfigurator.GetNetworkNamespaceName, ipamRepository)
 
-	containerRepository, err := container.NewLibcontainerRepository()
+	containerRepository, err := container.NewLibcontainerRepository(ipamRepository)
 	if err != nil {
 		log.Fatalf("failed to create the container repository: %v", err)
 	}
@@ -37,6 +40,7 @@ func main() {
 	containerConfigurator := container.NewNamespaceConfigurator(
 		networkConfigurator.GetNetworkNamespaceName,
 		subnetworkConfigurator.GetBridgeName,
+		ipamRepository,
 	)
 
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))

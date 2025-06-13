@@ -19,10 +19,11 @@ import (
 var _ shared.ContainerRepository = &libcontainerRepository{}
 
 type libcontainerRepository struct {
-	root string
+	root           string
+	ipamRepository shared.IpamRepository
 }
 
-func NewLibcontainerRepository() (shared.ContainerRepository, error) {
+func NewLibcontainerRepository(ipamRepository shared.IpamRepository) (shared.ContainerRepository, error) {
 	root := "/var/run/bx2cloud"
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, err
@@ -71,7 +72,8 @@ func NewLibcontainerRepository() (shared.ContainerRepository, error) {
 	}
 
 	return &libcontainerRepository{
-		root: root,
+		root:           root,
+		ipamRepository: ipamRepository,
 	}, nil
 }
 
@@ -117,13 +119,18 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.Con
 }
 
 // Returns a container in a started state
-func (r *libcontainerRepository) Add(image string, subnetworkId uint32) (*shared.ContainerModel, error) {
+func (r *libcontainerRepository) Add(image string, subnetwork *shared.SubnetworkModel) (*shared.ContainerModel, error) {
 	id := id.NextId("container")
+
+	ip, err := r.ipamRepository.Allocate(subnetwork, shared.IPAM_CONTAINER)
+	if err != nil {
+		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
+	}
 
 	spec := &specs.Spec{
 		Version: specs.Version,
 		Root: &specs.Root{
-			Path:     "/ubuntu-rootfs", // TODO: Initialize a rootfs for each container
+			Path:     "/ubuntu-rootfs", // TODO: (This PR) Initialize a rootfs for each container
 			Readonly: false,
 		},
 		Process: &specs.Process{
@@ -162,7 +169,8 @@ func (r *libcontainerRepository) Add(image string, subnetworkId uint32) (*shared
 		},
 		Annotations: map[string]string{
 			"image":        image,
-			"subnetworkId": strconv.FormatUint(uint64(subnetworkId), 10),
+			"subnetworkId": strconv.FormatUint(uint64(subnetwork.Id), 10),
+			"ip":           ip.String(),
 		},
 		Hostname: fmt.Sprintf("container-%d", id),
 	}
