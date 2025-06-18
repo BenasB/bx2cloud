@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/BenasB/bx2cloud/internal/api/container"
+	"github.com/BenasB/bx2cloud/internal/api/container/images"
 	"github.com/BenasB/bx2cloud/internal/api/network"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
@@ -16,7 +17,7 @@ func main() {
 	address := "localhost:8080"
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
@@ -26,7 +27,7 @@ func main() {
 	networkRepository := network.NewMemoryRepository(sampleNetworks)
 	networkConfigurator, err := network.NewNamespaceConfigurator()
 	if err != nil {
-		log.Fatalf("failed to create the network configurator: %v", err)
+		log.Fatalf("Failed to create the network configurator: %v", err)
 	}
 
 	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
@@ -34,7 +35,7 @@ func main() {
 
 	containerRepository, err := container.NewLibcontainerRepository(ipamRepository)
 	if err != nil {
-		log.Fatalf("failed to create the container repository: %v", err)
+		log.Fatalf("Failed to create the container repository: %v", err)
 	}
 
 	containerConfigurator := container.NewNamespaceConfigurator(
@@ -42,13 +43,17 @@ func main() {
 		subnetworkConfigurator.GetBridgeName,
 		ipamRepository,
 	)
+	imagePuller, err := images.NewBasicPuller()
+	if err != nil {
+		log.Fatalf("Failed to create the image puller: %v", err)
+	}
 
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
 	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator))
-	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator))
+	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator, imagePuller))
 
 	log.Printf("Starting server on %s", address)
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }

@@ -29,9 +29,8 @@ func NewLibcontainerRepository(ipamRepository shared.IpamRepository) (shared.Con
 		return nil, err
 	}
 
-	os.ReadDir(root)
 	list, err := os.ReadDir(root)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, err
 	}
 
@@ -119,9 +118,7 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.Con
 }
 
 // Returns a container in a started state
-func (r *libcontainerRepository) Add(image string, subnetwork *shared.SubnetworkModel) (*shared.ContainerModel, error) {
-	id := id.NextId("container")
-
+func (r *libcontainerRepository) Add(id uint32, image string, rootFsDir string, subnetwork *shared.SubnetworkModel) (*shared.ContainerModel, error) {
 	ip, err := r.ipamRepository.Allocate(subnetwork, shared.IPAM_CONTAINER)
 	if err != nil {
 		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
@@ -130,7 +127,7 @@ func (r *libcontainerRepository) Add(image string, subnetwork *shared.Subnetwork
 	spec := &specs.Spec{
 		Version: specs.Version,
 		Root: &specs.Root{
-			Path:     "/ubuntu-rootfs", // TODO: (This PR) Initialize a rootfs for each container
+			Path:     rootFsDir,
 			Readonly: false,
 		},
 		Process: &specs.Process{

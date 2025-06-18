@@ -92,6 +92,8 @@ func Create(client pb.ContainerServiceClient) error {
 	// 	return err
 	// }
 
+	// TODO: (This PR) Implement a way to read the container creation request from a file or stdin.
+
 	req := &pb.ContainerCreationRequest{
 		SubnetworkId: 4,
 		Image:        "ubuntu:24.04",

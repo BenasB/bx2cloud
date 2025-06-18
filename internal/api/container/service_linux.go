@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BenasB/bx2cloud/internal/api/container/images"
+	"github.com/BenasB/bx2cloud/internal/api/id"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/opencontainers/runc/libcontainer"
@@ -28,13 +30,20 @@ type service struct {
 	repository           shared.ContainerRepository
 	subnetworkRepository shared.SubnetworkRepository
 	configurator         configurator
+	imagePuller          images.Puller
 }
 
-func NewService(containerRepository shared.ContainerRepository, subnetworkRepository shared.SubnetworkRepository, configurator configurator) *service {
+func NewService(
+	containerRepository shared.ContainerRepository,
+	subnetworkRepository shared.SubnetworkRepository,
+	configurator configurator,
+	imagePuller images.Puller,
+) *service {
 	return &service{
 		repository:           containerRepository,
 		subnetworkRepository: subnetworkRepository,
 		configurator:         configurator,
+		imagePuller:          imagePuller,
 	}
 }
 
@@ -117,7 +126,14 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		return nil, err
 	}
 
-	container, err := s.repository.Add(req.Image, subnetwork)
+	id := id.NextId("container")
+
+	rootFsDir, err := s.imagePuller.PrepareRootFs(id, req.Image)
+	if err != nil {
+		return nil, err
+	}
+
+	container, err := s.repository.Add(id, req.Image, rootFsDir, subnetwork)
 	if err != nil {
 		return nil, err
 	}
