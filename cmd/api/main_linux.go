@@ -48,7 +48,7 @@ func main() {
 		log.Fatalf("Failed to create the image puller: %v", err)
 	}
 
-	_, err = imagePuller.PrepareRootFs(1, "ubuntu:24.04")
+	_, err = imagePuller.PrepareRootFs(6, "benasbudrys/kafka-faker-fe")
 	if err != nil {
 		log.Fatalf("Failed to test pull: %v", err)
 	}

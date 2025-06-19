@@ -1,6 +1,8 @@
 package images
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -42,6 +44,7 @@ func NewBasicPuller() (*basicPuller, error) {
 	}, nil
 }
 
+// TODO: (This PR) Use github.com/opencontainers/image-spec
 type OciIndex struct {
 	Manifests []struct {
 		Digest   string `json:"digest"`
@@ -64,11 +67,13 @@ type OciManifest struct {
 func (p *basicPuller) PrepareRootFs(id uint32, imageName string) (string, error) {
 	host, repo, ref := p.parseImageName(imageName)
 
+	// TODO: (This PR) Handle images which do not have an index
 	indexURL := fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, repo, ref)
 	index, token, err := p.fetchIndex(indexURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch index: %w", err)
 	}
+	log.Print(index)
 
 	var manifestDigest string
 	for _, manifest := range index.Manifests {
@@ -89,19 +94,20 @@ func (p *basicPuller) PrepareRootFs(id uint32, imageName string) (string, error)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch manifest: %w", err)
 	}
+	log.Print(manifest)
 
+	// TODO: (This PR) Pull config as well
+
+	rootfsDir := filepath.Join(p.dir, strconv.FormatUint(uint64(id), 10))
 	for _, layer := range manifest.Layers {
-		layerUrl := fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, repo, layer.Digest)
-		dir := path.Join(p.dir, strconv.FormatUint(uint64(id), 10))
-		err := p.fetchAndUnpackLayer(layerUrl, dir)
+		layerUrl := fmt.Sprintf("https://%s/v2/%s/blobs/%s", host, repo, layer.Digest)
+		err := p.fetchAndUnpackLayer(layerUrl, token, rootfsDir)
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch and unpack layer: %w", err)
 		}
 	}
 
-	log.Print(manifest)
-
-	return "", nil // TODO: return real path to rootfs
+	return rootfsDir, nil
 }
 
 func (p *basicPuller) fetchIndex(url string) (*OciIndex, string, error) {
@@ -194,8 +200,118 @@ func (p *basicPuller) fetchManifest(url string, token string) (*OciManifest, err
 	return &manifest, nil
 }
 
-func (p *basicPuller) fetchAndUnpackLayer(url string, dir string) error {
-	panic("unimplemented")
+func (p *basicPuller) fetchAndUnpackLayer(url string, token string, dir string) error {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create the blob request: %w", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to download layer: %w", err)
+	}
+	defer resp.Body.Close()
+
+	gzipReader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gzipReader.Close()
+
+	tarReader := tar.NewReader(gzipReader)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		targetPath := filepath.Join(dir, header.Name)
+		baseName := filepath.Base(header.Name)
+
+		const whiteoutPrefix = ".wh."
+		if strings.HasPrefix(baseName, whiteoutPrefix) {
+			originalFileName := strings.TrimPrefix(baseName, whiteoutPrefix)
+			pathToRemove := filepath.Join(filepath.Dir(targetPath), originalFileName)
+			if err := os.RemoveAll(pathToRemove); err != nil {
+				return fmt.Errorf("could not process whiteout for %s: %w", pathToRemove, err)
+			}
+			continue
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
+				log.Print(targetPath)
+				return err
+			}
+		case tar.TypeReg:
+			// Ensure parent dir exists
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				log.Print(targetPath)
+				return err
+			}
+			outFile, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				log.Print(targetPath)
+				return err
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
+				log.Print(targetPath)
+				return err
+			}
+			outFile.Close()
+		case tar.TypeSymlink:
+			if _, err := os.Lstat(targetPath); err == nil {
+				if err := os.Remove(targetPath); err != nil {
+					return err
+				}
+			}
+
+			// Ensure symlinked path exists
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				log.Print(targetPath)
+				return err
+			}
+
+			var oldname string
+			if filepath.IsAbs(header.Linkname) {
+				oldname = filepath.Join(dir, header.Linkname)
+			} else {
+				oldname = filepath.Join(filepath.Dir(targetPath), header.Linkname)
+			}
+
+			if err := os.Symlink(oldname, targetPath); err != nil {
+				log.Print(dir)
+				log.Print(header.Linkname)
+				log.Print(oldname)
+				log.Print(targetPath)
+				return err
+			}
+		case tar.TypeLink:
+			var oldname string
+			if filepath.IsAbs(header.Linkname) {
+				oldname = filepath.Join(dir, header.Linkname)
+			} else {
+				oldname = filepath.Join(filepath.Dir(targetPath), header.Linkname)
+			}
+
+			if err := os.Link(oldname, targetPath); err != nil {
+				log.Print(targetPath)
+				return err
+			}
+		default:
+			log.Printf("Skipping unsupported tar entry type %c for file %s", header.Typeflag, header.Name)
+		}
+	}
+	return nil
 }
 
 func (p *basicPuller) fetchToken(wwwAuthenticateHeader string) (string, error) {
