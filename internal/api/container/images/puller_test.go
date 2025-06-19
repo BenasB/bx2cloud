@@ -75,7 +75,7 @@ func TestBasicPuller_ParseWwwAuthenticate(t *testing.T) {
 	}
 }
 
-func TestBasicPuller_RequestToken(t *testing.T) {
+func TestBasicPuller_FetchToken(t *testing.T) {
 	outToken := "foo"
 
 	server := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -97,7 +97,7 @@ func TestBasicPuller_RequestToken(t *testing.T) {
 	}
 
 	wwwAuthenticateHeader := fmt.Sprintf("Bearer realm=\"%s/v2/auth\",service=\"my-service\"", server.URL)
-	res, err := puller.requestToken(wwwAuthenticateHeader)
+	res, err := puller.fetchToken(wwwAuthenticateHeader)
 	if err != nil {
 		t.Fatalf("puller failed to authenticate: %v", err)
 	}

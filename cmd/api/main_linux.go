@@ -48,6 +48,11 @@ func main() {
 		log.Fatalf("Failed to create the image puller: %v", err)
 	}
 
+	_, err = imagePuller.PrepareRootFs(1, "ubuntu:24.04")
+	if err != nil {
+		log.Fatalf("Failed to test pull: %v", err)
+	}
+
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
 	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator))
 	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator, imagePuller))
