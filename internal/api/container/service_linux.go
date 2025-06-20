@@ -117,6 +117,8 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
+	// TODO: (This PR) clean rootfs
+
 	return &emptypb.Empty{}, nil
 }
 
@@ -208,7 +210,11 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	}
 
 	process := &libcontainer.Process{
-		Args: []string{"/bin/bash"},
+		Args: []string{
+			"/bin/sh",
+			"-c",
+			"[ -x /bin/bash ] && exec /bin/bash || exec /bin/sh",
+		},
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			fmt.Sprintf("TERM=%s", term),

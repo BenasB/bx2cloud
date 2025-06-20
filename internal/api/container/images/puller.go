@@ -14,29 +14,45 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/opencontainers/go-digest"
+	imgspec "github.com/opencontainers/image-spec/specs-go/v1"
+)
+
+type RegistryEntity string
+
+const (
+	REGISTRY_ENTITY_MANIFEST RegistryEntity = "manifests"
+	REGISTRY_ENTITY_BLOB     RegistryEntity = "blobs"
 )
 
 type Puller interface {
 	PrepareRootFs(id uint32, imageName string) (string, error)
 }
 
-var _ Puller = &basicPuller{}
+var _ Puller = &flatPuller{}
 
-type basicPuller struct {
+type flatPuller struct {
 	dir    string
 	client *http.Client
 	os     string
 	arch   string
 }
 
-func NewBasicPuller() (*basicPuller, error) {
+type imageContext struct {
+	host  string
+	name  string
+	token string
+}
+
+func NewFlatPuller() (*flatPuller, error) {
 	dir := "/var/lib/bx2cloud"
 
 	if err := os.MkdirAll(dir, 0644); err != nil {
 		return nil, fmt.Errorf("failed to create the directory that stores rootfs of containers: %w", err)
 	}
 
-	return &basicPuller{
+	return &flatPuller{
 		dir:    dir,
 		client: http.DefaultClient,
 		os:     runtime.GOOS,
@@ -44,64 +60,75 @@ func NewBasicPuller() (*basicPuller, error) {
 	}, nil
 }
 
-// TODO: (This PR) Use github.com/opencontainers/image-spec
-type OciIndex struct {
-	Manifests []struct {
-		Digest   string `json:"digest"`
-		Platform struct {
-			Architecture string `json:"architecture"`
-			OS           string `json:"os"`
-		} `json:"platform"`
-	} `json:"manifests"`
-}
+func (p *flatPuller) PrepareRootFs(id uint32, imageName string) (string, error) {
+	ref, context := p.parseImageName(imageName)
 
-type OciManifest struct {
-	Config struct {
-		Digest string `json:"digest"`
-	} `json:"config"`
-	Layers []struct {
-		Digest string `json:"digest"`
-	} `json:"layers"`
-}
-
-func (p *basicPuller) PrepareRootFs(id uint32, imageName string) (string, error) {
-	host, repo, ref := p.parseImageName(imageName)
-
-	// TODO: (This PR) Handle images which do not have an index
-	indexURL := fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, repo, ref)
-	index, token, err := p.fetchIndex(indexURL)
+	initialManifestBytes, contentType, err := p.fetchRegistry(ref, REGISTRY_ENTITY_MANIFEST, context)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch index: %w", err)
+		return "", fmt.Errorf("failed to fetch initial manifest: %w", err)
 	}
-	log.Print(index)
 
-	var manifestDigest string
-	for _, manifest := range index.Manifests {
-		if manifest.Platform.OS != p.os || manifest.Platform.Architecture != p.arch {
-			continue
+	var manifest imgspec.Manifest
+	switch contentType {
+	case "application/vnd.docker.distribution.manifest.list.v2+json":
+		fallthrough
+	case imgspec.MediaTypeImageIndex: // We discovered a manifest index, need to locate the correct image manifest
+		var index imgspec.Index
+		if err := json.Unmarshal(initialManifestBytes, &index); err != nil {
+			return "", fmt.Errorf("failed to decode index: %w", err)
 		}
 
-		manifestDigest = manifest.Digest
-		break
+		digest, err := p.findManifestDigestInIndex(&index)
+		if err != nil {
+			return "", err
+		}
+
+		manifestBytes, _, err := p.fetchRegistry(digest.String(), REGISTRY_ENTITY_MANIFEST, context)
+		if err != nil {
+			return "", fmt.Errorf("failed to fetch manifest: %w", err)
+		}
+
+		if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+			return "", fmt.Errorf("failed to decode manifest: %w", err)
+		}
+	case "application/vnd.docker.distribution.manifest.v2+json":
+		fallthrough
+	case imgspec.MediaTypeImageManifest:
+		if err := json.Unmarshal(initialManifestBytes, &manifest); err != nil {
+			return "", fmt.Errorf("failed to decode manifest: %w", err)
+		}
+	default:
+		return "", fmt.Errorf("unsupported initial manifest content type %q", contentType)
 	}
 
-	if manifestDigest == "" {
-		return "", fmt.Errorf("failed to find an image for %s/%s in the index", p.os, p.arch)
+	if manifest.Config.MediaType != imgspec.MediaTypeImageConfig &&
+		manifest.Config.MediaType != "application/vnd.docker.container.image.v1+json" {
+		return "", fmt.Errorf("unsupported config content type %q", contentType)
 	}
 
-	manifestUrl := fmt.Sprintf("https://%s/v2/%s/manifests/%s", host, repo, manifestDigest)
-	manifest, err := p.fetchManifest(manifestUrl, token)
+	configBytes, contentType, err := p.fetchRegistry(manifest.Config.Digest.String(), REGISTRY_ENTITY_BLOB, context)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch manifest: %w", err)
+		return "", fmt.Errorf("failed to fetch config: %w", err)
 	}
-	log.Print(manifest)
 
-	// TODO: (This PR) Pull config as well
+	var config imgspec.Image
+	if err := json.Unmarshal(configBytes, &config); err != nil {
+		return "", fmt.Errorf("failed to decode config: %w", err)
+	}
+
+	if config.Platform.OS != p.os || config.Platform.Architecture != p.arch {
+		return "", fmt.Errorf("failed to find an image for %s/%s", p.os, p.arch)
+	}
+
+	// TODO: (This PR) take config.Config and turn into libcontainer.Process
 
 	rootfsDir := filepath.Join(p.dir, strconv.FormatUint(uint64(id), 10))
+	if _, err := os.Stat(rootfsDir); err == nil {
+		return "", fmt.Errorf("something already exsits at the rootfs path %q", rootfsDir)
+	}
+
 	for _, layer := range manifest.Layers {
-		layerUrl := fmt.Sprintf("https://%s/v2/%s/blobs/%s", host, repo, layer.Digest)
-		err := p.fetchAndUnpackLayer(layerUrl, token, rootfsDir)
+		err := p.fetchAndUnpackLayer(layer.Digest.String(), context, rootfsDir)
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch and unpack layer: %w", err)
 		}
@@ -110,110 +137,94 @@ func (p *basicPuller) PrepareRootFs(id uint32, imageName string) (string, error)
 	return rootfsDir, nil
 }
 
-func (p *basicPuller) fetchIndex(url string) (*OciIndex, string, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create the index request: %w", err)
+func (p *flatPuller) requestRegistry(ref string, entity RegistryEntity, context *imageContext) (*http.Response, error) {
+	url := fmt.Sprintf("https://%s/v2/%s/%s/%s", context.host, context.name, entity, ref)
+	createRequest := func() (*http.Request, error) {
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
+		if context.token != "" {
+			req.Header.Set("Authorization", "Bearer "+context.token)
+		}
+		return req, nil
 	}
-	const acceptHeader = "application/vnd.oci.image.manifest.v1+json"
-	req.Header.Set("Accept", acceptHeader)
+
+	req, err := createRequest()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create the request: %w", err)
+	}
 
 	resp, err := p.client.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to perform index fetching HTTP request: %w", err)
+		return nil, fmt.Errorf("failed to perform HTTP request: %w", err)
 	}
-	defer resp.Body.Close()
 
-	var token string
-	if resp.StatusCode == http.StatusUnauthorized {
+	// Maybe we need to authenticate
+	if context.token == "" && resp.StatusCode == http.StatusUnauthorized {
+		resp.Body.Close()
+
 		wwwAuthenticateHeader := resp.Header.Get("www-authenticate")
 		if wwwAuthenticateHeader == "" {
-			return nil, "", fmt.Errorf("registry requested to authenticate, but did not include www-authenticate header")
+			return nil, fmt.Errorf("registry requested to authenticate, but did not include www-authenticate header")
 		}
 
-		token, err = p.fetchToken(wwwAuthenticateHeader)
+		context.token, err = p.fetchToken(wwwAuthenticateHeader)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to authenticate: %w", err)
+			return nil, fmt.Errorf("failed to authenticate: %w", err)
 		}
 
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := createRequest()
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to create the authenticated index request: %w", err)
+			return nil, fmt.Errorf("failed to create the request: %w", err)
 		}
-		req.Header.Set("Accept", acceptHeader)
-		req.Header.Set("Authorization", "Bearer "+token)
 
 		resp, err = p.client.Do(req)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to fetch authenticated index: %w", err)
+			return nil, fmt.Errorf("failed to perform HTTP request: %w", err)
 		}
-		defer resp.Body.Close()
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("index fetch failed with status %d", resp.StatusCode)
+		bytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("fetch failed with status %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("fetch failed with status %d: %s", resp.StatusCode, string(bytes))
 	}
 
-	indexBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to read index body: %w", err)
-	}
-
-	var index OciIndex
-	if err := json.Unmarshal(indexBytes, &index); err != nil {
-		return nil, "", fmt.Errorf("failed to decode index: %w", err)
-	}
-
-	return &index, token, nil
+	return resp, nil
 }
 
-func (p *basicPuller) fetchManifest(url string, token string) (*OciManifest, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func (p *flatPuller) fetchRegistry(
+	ref string,
+	entity RegistryEntity,
+	context *imageContext,
+) ([]byte, string, error) {
+	resp, err := p.requestRegistry(ref, entity, context)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create the manifest request: %w", err)
-	}
-	req.Header.Set("Accept", "application/vnd.oci.image.manifest.v1+json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to perform manifest fetching HTTP request: %w", err)
+		return nil, "", err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("manifest fetch failed with status %d", resp.StatusCode)
-	}
-
-	manifestBytes, err := io.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read manifest body: %w", err)
+		return nil, "", fmt.Errorf("failed to read body: %w", err)
 	}
 
-	var manifest OciManifest
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		return nil, fmt.Errorf("failed to decode manifest: %w", err)
-	}
-
-	return &manifest, nil
+	return bytes, resp.Header.Get("Content-Type"), nil
 }
 
-func (p *basicPuller) fetchAndUnpackLayer(url string, token string, dir string) error {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create the blob request: %w", err)
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	resp, err := p.client.Do(req)
+func (p *flatPuller) fetchAndUnpackLayer(ref string, context *imageContext, dir string) error {
+	resp, err := p.requestRegistry(ref, REGISTRY_ENTITY_BLOB, context)
 	if err != nil {
 		return fmt.Errorf("failed to download layer: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("fetch failed with status %d", resp.StatusCode)
+	}
 
 	gzipReader, err := gzip.NewReader(resp.Body)
 	if err != nil {
@@ -248,63 +259,42 @@ func (p *basicPuller) fetchAndUnpackLayer(url string, token string, dir string) 
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
-				log.Print(targetPath)
 				return err
 			}
 		case tar.TypeReg:
 			// Ensure parent dir exists
 			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
-				log.Print(targetPath)
 				return err
 			}
 			outFile, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(header.Mode))
 			if err != nil {
-				log.Print(targetPath)
 				return err
 			}
 			if _, err := io.Copy(outFile, tarReader); err != nil {
 				outFile.Close()
-				log.Print(targetPath)
 				return err
 			}
 			outFile.Close()
 		case tar.TypeSymlink:
+			// Remove a file (most likely a symlink) before symlinking if it existed before
 			if _, err := os.Lstat(targetPath); err == nil {
 				if err := os.Remove(targetPath); err != nil {
 					return err
 				}
 			}
 
-			// Ensure symlinked path exists
+			// Ensure parent dir exists
 			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
-				log.Print(targetPath)
 				return err
 			}
 
-			var oldname string
-			if filepath.IsAbs(header.Linkname) {
-				oldname = filepath.Join(dir, header.Linkname)
-			} else {
-				oldname = filepath.Join(filepath.Dir(targetPath), header.Linkname)
-			}
-
-			if err := os.Symlink(oldname, targetPath); err != nil {
-				log.Print(dir)
-				log.Print(header.Linkname)
-				log.Print(oldname)
-				log.Print(targetPath)
+			if err := os.Symlink(header.Linkname, targetPath); err != nil {
 				return err
 			}
 		case tar.TypeLink:
-			var oldname string
-			if filepath.IsAbs(header.Linkname) {
-				oldname = filepath.Join(dir, header.Linkname)
-			} else {
-				oldname = filepath.Join(filepath.Dir(targetPath), header.Linkname)
-			}
+			oldname := filepath.Join(dir, header.Linkname)
 
 			if err := os.Link(oldname, targetPath); err != nil {
-				log.Print(targetPath)
 				return err
 			}
 		default:
@@ -314,7 +304,7 @@ func (p *basicPuller) fetchAndUnpackLayer(url string, token string, dir string) 
 	return nil
 }
 
-func (p *basicPuller) fetchToken(wwwAuthenticateHeader string) (string, error) {
+func (p *flatPuller) fetchToken(wwwAuthenticateHeader string) (string, error) {
 	params := p.parseWwwAuthenticate(wwwAuthenticateHeader)
 	realm, ok := params["realm"]
 	if !ok {
@@ -360,40 +350,41 @@ func (p *basicPuller) fetchToken(wwwAuthenticateHeader string) (string, error) {
 	return fmt.Sprintf("%v", token), nil
 }
 
-func (p *basicPuller) parseImageName(imageName string) (host, repo, ref string) {
+func (p *flatPuller) parseImageName(imageName string) (ref string, context *imageContext) {
+	context = &imageContext{}
 	parts := strings.SplitN(imageName, "/", 2)
 	const defaultHost = "registry-1.docker.io"
 
 	var repoAndRef string
 	if len(parts) != 2 {
-		host = defaultHost
+		context.host = defaultHost
 		repoAndRef = imageName
 	} else {
 		// Determine if the '/' was a part of the repository or separated the host part
 		if strings.Contains(parts[0], ".") || strings.Contains(parts[0], ":") {
-			host, repoAndRef = parts[0], parts[1]
+			context.host, repoAndRef = parts[0], parts[1]
 		} else {
-			host = defaultHost
+			context.host = defaultHost
 			repoAndRef = imageName
 		}
 	}
 
 	repoParts := strings.SplitN(repoAndRef, ":", 2)
 	if len(repoParts) != 2 {
-		repo = repoAndRef
+		context.name = repoAndRef
 		ref = "latest"
 	} else {
-		repo, ref = repoParts[0], repoParts[1]
+		context.name, ref = repoParts[0], repoParts[1]
 	}
 
-	if strings.Contains(host, "docker.io") && !strings.Contains(repo, "/") {
-		repo = "library/" + repo
+	if strings.Contains(context.host, "docker.io") && !strings.Contains(context.name, "/") {
+		context.name = "library/" + context.name
 	}
 
 	return
 }
 
-func (p *basicPuller) parseWwwAuthenticate(header string) map[string]string {
+func (p *flatPuller) parseWwwAuthenticate(header string) map[string]string {
 	parts := strings.Split(strings.TrimPrefix(header, "Bearer "), ",")
 	params := make(map[string]string)
 	for _, part := range parts {
@@ -403,4 +394,16 @@ func (p *basicPuller) parseWwwAuthenticate(header string) map[string]string {
 		}
 	}
 	return params
+}
+
+func (p *flatPuller) findManifestDigestInIndex(index *imgspec.Index) (*digest.Digest, error) {
+	for _, manifest := range index.Manifests {
+		if manifest.Platform.OS != p.os || manifest.Platform.Architecture != p.arch {
+			continue
+		}
+
+		return &manifest.Digest, nil
+	}
+
+	return nil, fmt.Errorf("failed to find an image for %s/%s in the index", p.os, p.arch)
 }

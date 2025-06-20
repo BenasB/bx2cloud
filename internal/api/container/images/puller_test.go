@@ -9,11 +9,11 @@ import (
 	"testing"
 )
 
-func TestBasicPuller_ParseImageName(t *testing.T) {
+func TestFlatPuller_ParseImageName(t *testing.T) {
 	var imageNameTests = []struct {
 		in      string
 		outHost string
-		outRepo string
+		outName string
 		outRef  string
 	}{
 		{"my-registry.com/ubuntu:24.04", "my-registry.com", "ubuntu", "24.04"},
@@ -25,19 +25,27 @@ func TestBasicPuller_ParseImageName(t *testing.T) {
 		{"ubuntu", "registry-1.docker.io", "library/ubuntu", "latest"},
 	}
 
-	puller := &basicPuller{}
+	puller := &flatPuller{}
 
 	for _, tt := range imageNameTests {
 		t.Run(tt.in, func(t *testing.T) {
-			resultHost, resultRepo, resultRef := puller.parseImageName(tt.in)
-			if resultHost != tt.outHost || resultRepo != tt.outRepo || resultRef != tt.outRef {
-				t.Fatalf("got %q, %q, %q, want %q, %q, %q", resultHost, resultRepo, resultRef, tt.outHost, tt.outRepo, tt.outRef)
+			resultRef, resultContext := puller.parseImageName(tt.in)
+			if resultContext.host != tt.outHost || resultContext.name != tt.outName || resultRef != tt.outRef {
+				t.Fatalf(
+					"got %q, %q, %q, want %q, %q, %q",
+					resultContext.host,
+					resultContext.name,
+					resultRef,
+					tt.outHost,
+					tt.outName,
+					tt.outRef,
+				)
 			}
 		})
 	}
 }
 
-func TestBasicPuller_ParseWwwAuthenticate(t *testing.T) {
+func TestFlatPuller_ParseWwwAuthenticate(t *testing.T) {
 	var imageNameTests = []struct {
 		in  string
 		out map[string]string
@@ -63,7 +71,7 @@ func TestBasicPuller_ParseWwwAuthenticate(t *testing.T) {
 		}},
 	}
 
-	puller := &basicPuller{}
+	puller := &flatPuller{}
 
 	for _, tt := range imageNameTests {
 		t.Run(tt.in, func(t *testing.T) {
@@ -75,7 +83,7 @@ func TestBasicPuller_ParseWwwAuthenticate(t *testing.T) {
 	}
 }
 
-func TestBasicPuller_FetchToken(t *testing.T) {
+func TestFlatPuller_FetchToken(t *testing.T) {
 	outToken := "foo"
 
 	server := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -92,14 +100,14 @@ func TestBasicPuller_FetchToken(t *testing.T) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr}
-	puller := &basicPuller{
+	puller := &flatPuller{
 		client: client,
 	}
 
 	wwwAuthenticateHeader := fmt.Sprintf("Bearer realm=\"%s/v2/auth\",service=\"my-service\"", server.URL)
 	res, err := puller.fetchToken(wwwAuthenticateHeader)
 	if err != nil {
-		t.Fatalf("puller failed to authenticate: %v", err)
+		t.Fatalf("puller failed to fetch token: %v", err)
 	}
 
 	if res != outToken {
