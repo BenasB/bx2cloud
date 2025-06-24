@@ -106,7 +106,7 @@ func (p *flatPuller) PrepareRootFs(id uint32, imageName string) (string, error) 
 		return "", fmt.Errorf("unsupported config content type %q", contentType)
 	}
 
-	configBytes, contentType, err := p.fetchRegistry(manifest.Config.Digest.String(), REGISTRY_ENTITY_BLOB, context)
+	configBytes, _, err := p.fetchRegistry(manifest.Config.Digest.String(), REGISTRY_ENTITY_BLOB, context)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch config: %w", err)
 	}
@@ -132,6 +132,11 @@ func (p *flatPuller) PrepareRootFs(id uint32, imageName string) (string, error) 
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch and unpack layer: %w", err)
 		}
+	}
+
+	{
+		tmpPath := filepath.Join(rootfsDir, "tmp")
+		_ = os.Chmod(tmpPath, 0o777|os.ModeSticky)
 	}
 
 	return rootfsDir, nil

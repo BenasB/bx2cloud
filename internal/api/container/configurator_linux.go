@@ -37,10 +37,10 @@ func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBr
 func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
-	defer networkNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the network's namespace: %w", err)
 	}
+	defer networkNs.Close()
 
 	state, err := model.OCIState()
 	if err != nil {
@@ -49,10 +49,10 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 
 	containerNsPath := (&configs.Namespace{Type: configs.NEWNET}).GetPath(state.Pid)
 	containerNs, err := netns.GetFromPath(containerNsPath)
-	defer containerNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the network namespace of the container from the file path: %w", err)
 	}
+	defer containerNs.Close()
 
 	var containerVethIpNet *net.IPNet
 	for _, label := range model.Config().Labels {
@@ -79,10 +79,10 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 	defer runtime.UnlockOSThread()
 
 	origNs, err := netns.Get()
-	defer origNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
 	}
+	defer origNs.Close()
 	defer func() {
 		if err := netns.Set(origNs); err != nil {
 			panic("failed to move back to the original network namespace, panicking to not change unexpected state")
@@ -209,19 +209,19 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 func (n *namespaceConfigurator) unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
-	defer networkNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the network's namespace: %w", err)
 	}
+	defer networkNs.Close()
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
 	origNs, err := netns.Get()
-	defer origNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
 	}
+	defer origNs.Close()
 	defer func() {
 		if err := netns.Set(origNs); err != nil {
 			panic("failed to move back to the original network namespace, panicking to not change unexpected state")

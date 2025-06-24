@@ -124,6 +124,12 @@ func (r *libcontainerRepository) Add(id uint32, image string, rootFsDir string, 
 		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
 	}
 
+	dnsSource := "/etc/resolv.conf"
+	const systemdDnsSource = "/run/systemd/resolve/resolv.conf"
+	if _, err := os.Stat(systemdDnsSource); err == nil {
+		dnsSource = systemdDnsSource
+	}
+
 	spec := &specs.Spec{
 		Version: specs.Version,
 		Root: &specs.Root{
@@ -149,9 +155,27 @@ func (r *libcontainerRepository) Add(id uint32, image string, rootFsDir string, 
 				Options:     []string{"nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"},
 			},
 			{
+				Destination: "/sys",
+				Type:        "sysfs",
+				Source:      "sysfs",
+				Options:     []string{"nosuid", "noexec", "nodev"},
+			},
+			{
+				Destination: "/dev/shm",
+				Type:        "tmpfs",
+				Source:      "shm",
+				Options: []string{
+					"nosuid",
+					"noexec",
+					"nodev",
+					"mode=1777",
+					"size=65536k",
+				},
+			},
+			{
 				Destination: "/etc/resolv.conf",
 				Type:        "bind",
-				Source:      "/etc/resolv.conf",
+				Source:      dnsSource,
 				Options:     []string{"rbind", "ro"},
 			},
 		},
