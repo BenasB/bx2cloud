@@ -28,6 +28,7 @@ const (
 
 type Puller interface {
 	PrepareRootFs(id uint32, imageName string) (string, error)
+	RemoveRootFs(id uint32) error
 }
 
 var _ Puller = &flatPuller{}
@@ -122,7 +123,7 @@ func (p *flatPuller) PrepareRootFs(id uint32, imageName string) (string, error) 
 
 	// TODO: (This PR) take config.Config and turn into libcontainer.Process
 
-	rootfsDir := filepath.Join(p.dir, strconv.FormatUint(uint64(id), 10))
+	rootfsDir := p.getRootFsDir(id)
 	if _, err := os.Stat(rootfsDir); err == nil {
 		return "", fmt.Errorf("something already exsits at the rootfs path %q", rootfsDir)
 	}
@@ -140,6 +141,10 @@ func (p *flatPuller) PrepareRootFs(id uint32, imageName string) (string, error) 
 	}
 
 	return rootfsDir, nil
+}
+
+func (p *flatPuller) getRootFsDir(id uint32) string {
+	return filepath.Join(p.dir, strconv.FormatUint(uint64(id), 10))
 }
 
 func (p *flatPuller) requestRegistry(ref string, entity RegistryEntity, context *imageContext) (*http.Response, error) {
@@ -411,4 +416,8 @@ func (p *flatPuller) findManifestDigestInIndex(index *imgspec.Index) (*digest.Di
 	}
 
 	return nil, fmt.Errorf("failed to find an image for %s/%s in the index", p.os, p.arch)
+}
+
+func (p *flatPuller) RemoveRootFs(id uint32) error {
+	return os.RemoveAll(p.getRootFsDir(id))
 }
