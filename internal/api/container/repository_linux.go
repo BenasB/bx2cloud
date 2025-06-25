@@ -13,17 +13,16 @@ import (
 	_ "github.com/opencontainers/cgroups/devices"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/specconv"
-	"github.com/opencontainers/runtime-spec/specs-go"
+	runspecs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 var _ shared.ContainerRepository = &libcontainerRepository{}
 
 type libcontainerRepository struct {
-	root           string
-	ipamRepository shared.IpamRepository
+	root string
 }
 
-func NewLibcontainerRepository(ipamRepository shared.IpamRepository) (shared.ContainerRepository, error) {
+func NewLibcontainerRepository() (shared.ContainerRepository, error) {
 	root := "/var/run/bx2cloud"
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, err
@@ -51,6 +50,7 @@ func NewLibcontainerRepository(ipamRepository shared.IpamRepository) (shared.Con
 			if err := os.Remove(f.Name()); err != nil {
 				return nil, fmt.Errorf("failed to remove an empty container state directory: %w", err)
 			}
+			continue
 		}
 		if err != nil {
 			return nil, err
@@ -71,8 +71,7 @@ func NewLibcontainerRepository(ipamRepository shared.IpamRepository) (shared.Con
 	}
 
 	return &libcontainerRepository{
-		root:           root,
-		ipamRepository: ipamRepository,
+		root: root,
 	}, nil
 }
 
@@ -118,84 +117,7 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.Con
 }
 
 // Returns a container in a started state
-func (r *libcontainerRepository) Add(id uint32, image string, rootFsDir string, subnetwork *shared.SubnetworkModel) (*shared.ContainerModel, error) {
-	ip, err := r.ipamRepository.Allocate(subnetwork, shared.IPAM_CONTAINER)
-	if err != nil {
-		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
-	}
-
-	dnsSource := "/etc/resolv.conf"
-	const systemdDnsSource = "/run/systemd/resolve/resolv.conf"
-	if _, err := os.Stat(systemdDnsSource); err == nil {
-		dnsSource = systemdDnsSource
-	}
-
-	spec := &specs.Spec{
-		Version: specs.Version,
-		Root: &specs.Root{
-			Path:     rootFsDir,
-			Readonly: false,
-		},
-		Process: &specs.Process{
-			Args: []string{"/proc/self/exe", "init"},
-			Env:  []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
-			Cwd:  "/",
-		},
-		Mounts: []specs.Mount{
-			{
-				Destination: "/proc",
-				Type:        "proc",
-				Source:      "proc",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev/pts",
-				Type:        "devpts",
-				Source:      "devpts",
-				Options:     []string{"nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"},
-			},
-			{
-				Destination: "/sys",
-				Type:        "sysfs",
-				Source:      "sysfs",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev/shm",
-				Type:        "tmpfs",
-				Source:      "shm",
-				Options: []string{
-					"nosuid",
-					"noexec",
-					"nodev",
-					"mode=1777",
-					"size=65536k",
-				},
-			},
-			{
-				Destination: "/etc/resolv.conf",
-				Type:        "bind",
-				Source:      dnsSource,
-				Options:     []string{"rbind", "ro"},
-			},
-		},
-		Linux: &specs.Linux{
-			Namespaces: []specs.LinuxNamespace{
-				{Type: specs.PIDNamespace},
-				{Type: specs.IPCNamespace},
-				{Type: specs.UTSNamespace},
-				{Type: specs.MountNamespace},
-				{Type: specs.NetworkNamespace},
-			},
-		},
-		Annotations: map[string]string{
-			"image":        image,
-			"subnetworkId": strconv.FormatUint(uint64(subnetwork.Id), 10),
-			"ip":           ip.String(),
-		},
-		Hostname: fmt.Sprintf("container-%d", id),
-	}
-
+func (r *libcontainerRepository) Add(id uint32, spec *runspecs.Spec) (*shared.ContainerModel, error) {
 	config, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
 		CgroupName:       fmt.Sprintf("bx2cloud-container-%d", id),
 		UseSystemdCgroup: false,
@@ -217,10 +139,12 @@ func (r *libcontainerRepository) Add(id uint32, image string, rootFsDir string, 
 	}
 
 	initProcess := &libcontainer.Process{
-		Args: []string{"sleep", "infinity"},
-		Env: []string{
-			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		},
+		Args: spec.Process.Args,
+		Env:  spec.Process.Env,
+		Cwd:  spec.Process.Cwd,
+		UID:  int(spec.Process.User.UID),
+		GID:  int(spec.Process.User.GID),
+		// Not everything is mapped here (yet?)
 		Init: true,
 	}
 

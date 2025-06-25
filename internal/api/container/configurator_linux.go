@@ -14,8 +14,8 @@ import (
 )
 
 type configurator interface {
-	configure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
-	unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
+	Configure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
+	Unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
 }
 
 var _ configurator = &namespaceConfigurator{}
@@ -34,7 +34,7 @@ func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBr
 	}
 }
 
-func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
+func (n *namespaceConfigurator) Configure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
 	if err != nil {
@@ -72,7 +72,7 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 	}
 
 	if containerVethIpNet == nil {
-		return fmt.Errorf("failed to retrieve the container's IP: %w", err)
+		return fmt.Errorf("failed to retrieve the container's IP")
 	}
 
 	runtime.LockOSThread()
@@ -206,7 +206,7 @@ func (n *namespaceConfigurator) configure(model *shared.ContainerModel, subnetwo
 	return nil
 }
 
-func (n *namespaceConfigurator) unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
+func (n *namespaceConfigurator) Unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
 	if err != nil {

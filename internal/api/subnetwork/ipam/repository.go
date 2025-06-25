@@ -54,8 +54,12 @@ func (r *memoryRepository) Deallocate(subnetwork *shared.SubnetworkModel, ip *ne
 	}
 
 	address := uint32(ip.IP[0])<<24 | uint32(ip.IP[1])<<16 | uint32(ip.IP[2])<<8 | uint32(ip.IP[3])
-	i := address - subnetwork.Address - 1
+	i := address - subnetwork.Address - r.reservedIpCount - 1
 	if i < 0 || i >= uint32(len(allocations)) {
+		return fmt.Errorf("IP is outside of bounds of the subnetwork")
+	}
+
+	if allocations[i] == shared.IPAM_UNALLOCATED {
 		return fmt.Errorf("subnetwork does not have this IP allocated")
 	}
 

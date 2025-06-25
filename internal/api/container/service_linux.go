@@ -19,6 +19,7 @@ import (
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/utils"
+	runspecs "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -31,6 +32,7 @@ type service struct {
 	subnetworkRepository shared.SubnetworkRepository
 	configurator         configurator
 	imagePuller          images.Puller
+	ipamRepository       shared.IpamRepository
 }
 
 func NewService(
@@ -38,12 +40,14 @@ func NewService(
 	subnetworkRepository shared.SubnetworkRepository,
 	configurator configurator,
 	imagePuller images.Puller,
+	ipamRepository shared.IpamRepository,
 ) *service {
 	return &service{
 		repository:           containerRepository,
 		subnetworkRepository: subnetworkRepository,
 		configurator:         configurator,
 		imagePuller:          imagePuller,
+		ipamRepository:       ipamRepository,
 	}
 }
 
@@ -68,6 +72,7 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 	}
 
 	if err == nil && status == libcontainer.Running {
+		// TODO: Send SIGTERM first to try to gracefully shut down the process
 		if err := container.Signal(unix.SIGKILL); err != nil {
 			return nil, fmt.Errorf("failed to send a kill signal to the container process: %w", err)
 		}
@@ -86,21 +91,38 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 	}
 
 	var subnetworkId *uint32
+	var containerIpNet *net.IPNet
 	for _, label := range container.Config().Labels {
-		after, found := strings.CutPrefix(label, "subnetworkId=")
-		if found {
+		if after, found := strings.CutPrefix(label, "subnetworkId="); found {
 			id64, err := strconv.ParseUint(after, 10, 32)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse the container's subnetwork id: %w", err)
 			}
 			id32 := uint32(id64)
 			subnetworkId = &id32
-			break
+			continue
+		}
+
+		if after, found := strings.CutPrefix(label, "ip="); found {
+			ip, ipNet, err := net.ParseCIDR(after)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse the container's IP: %w", err)
+			}
+
+			containerIpNet = &net.IPNet{
+				IP:   ip.To4(),
+				Mask: ipNet.Mask,
+			}
+			continue
 		}
 	}
 
 	if subnetworkId == nil {
-		return nil, fmt.Errorf("failed to retrieve the container's subnetwork id: %w", err)
+		return nil, fmt.Errorf("failed to retrieve the container's subnetwork id")
+	}
+
+	if containerIpNet == nil {
+		return nil, fmt.Errorf("failed to retrieve the container's IP")
 	}
 
 	subnetwork, err := s.subnetworkRepository.Get(*subnetworkId)
@@ -108,7 +130,7 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
-	if err := s.configurator.unconfigure(container, subnetwork); err != nil {
+	if err := s.configurator.Unconfigure(container, subnetwork); err != nil {
 		return nil, err
 	}
 
@@ -116,12 +138,14 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
+	if err := s.ipamRepository.Deallocate(subnetwork, containerIpNet); err != nil {
+		return nil, fmt.Errorf("failed to deallocate an IP for the container: %w", err)
+	}
+
 	_, err = s.repository.Delete(req.Id)
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: (This PR) clean rootfs
 
 	return &emptypb.Empty{}, nil
 }
@@ -134,17 +158,150 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 
 	id := id.NextId("container")
 
-	rootFsDir, err := s.imagePuller.PrepareRootFs(id, req.Image)
+	imgMetadata, err := s.imagePuller.GatherImageMetadata(req.Image)
 	if err != nil {
 		return nil, err
 	}
 
-	container, err := s.repository.Add(id, req.Image, rootFsDir, subnetwork)
+	rootFsDir, err := s.imagePuller.PrepareRootFs(id, imgMetadata)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.configurator.configure(container, subnetwork); err != nil {
+	ip, err := s.ipamRepository.Allocate(subnetwork, shared.IPAM_CONTAINER)
+	if err != nil {
+		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
+	}
+
+	dnsSource := "/etc/resolv.conf"
+	const systemdDnsSource = "/run/systemd/resolve/resolv.conf"
+	if _, err := os.Stat(systemdDnsSource); err == nil {
+		dnsSource = systemdDnsSource
+	}
+
+	// TODO: (This PR) Move out mapping logic somewhere
+
+	imgConf := imgMetadata.Image.Config
+
+	user := runspecs.User{}
+	userParts := strings.Split(imgConf.User, ":")
+	if len(userParts) == 2 {
+		uid, uidErr := strconv.ParseUint(userParts[0], 10, 32)
+		gid, gidErr := strconv.ParseUint(userParts[1], 10, 32)
+		if uidErr == nil && gidErr == nil {
+			user.UID = uint32(uid)
+			user.GID = uint32(gid)
+		} else {
+			user.Username = imgConf.User
+		}
+	} else {
+		if uid, err := strconv.ParseUint(imgConf.User, 10, 32); err == nil {
+			user.UID = uint32(uid)
+		} else {
+			user.Username = imgConf.User
+		}
+	}
+
+	var args []string
+	switch {
+	case len(imgConf.Entrypoint) > 0:
+		args = append([]string{}, imgConf.Entrypoint...)
+		args = append(args, imgConf.Cmd...)
+	case len(imgConf.Cmd) > 0:
+		args = []string{"/bin/sh", "-c", strings.Join(imgConf.Cmd, " ")}
+	default:
+		args = []string{"/bin/sh"}
+	}
+
+	env := make([]string, len(imgConf.Env))
+	copy(env, imgConf.Env)
+	pathEnvFound := false
+	for _, e := range env {
+		if strings.HasPrefix(e, "PATH=") {
+			pathEnvFound = true
+			break
+		}
+	}
+
+	if !pathEnvFound {
+		env = append(env, "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+	}
+
+	process := runspecs.Process{
+		User: user,
+		Args: args,
+		Env:  env,
+		Cwd:  imgConf.WorkingDir,
+	}
+
+	spec := &runspecs.Spec{
+		Version: runspecs.Version,
+		Root: &runspecs.Root{
+			Path:     rootFsDir,
+			Readonly: false,
+		},
+		Process: &process,
+		Mounts: []runspecs.Mount{
+			{
+				Destination: "/proc",
+				Type:        "proc",
+				Source:      "proc",
+				Options:     []string{"nosuid", "noexec", "nodev"},
+			},
+			{
+				Destination: "/dev/pts",
+				Type:        "devpts",
+				Source:      "devpts",
+				Options:     []string{"nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"},
+			},
+			{
+				Destination: "/sys",
+				Type:        "sysfs",
+				Source:      "sysfs",
+				Options:     []string{"nosuid", "noexec", "nodev"},
+			},
+			{
+				Destination: "/dev/shm",
+				Type:        "tmpfs",
+				Source:      "shm",
+				Options: []string{
+					"nosuid",
+					"noexec",
+					"nodev",
+					"mode=1777",
+					"size=65536k",
+				},
+			},
+			{
+				Destination: "/etc/resolv.conf",
+				Type:        "bind",
+				Source:      dnsSource,
+				Options:     []string{"rbind", "ro"},
+			},
+		},
+		Linux: &runspecs.Linux{
+			Namespaces: []runspecs.LinuxNamespace{
+				{Type: runspecs.PIDNamespace},
+				{Type: runspecs.IPCNamespace},
+				{Type: runspecs.UTSNamespace},
+				{Type: runspecs.MountNamespace},
+				{Type: runspecs.NetworkNamespace},
+			},
+		},
+		Annotations: map[string]string{
+			"image":        req.Image,
+			"subnetworkId": strconv.FormatUint(uint64(subnetwork.Id), 10),
+			"ip":           ip.String(),
+		},
+		Hostname: fmt.Sprintf("container-%d", id),
+	}
+
+	container, err := s.repository.Add(id, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.Configure(container, subnetwork); err != nil {
 		return nil, err
 	}
 
@@ -342,15 +499,13 @@ func mapModelToDto(container *shared.ContainerModel) (*pb.Container, error) {
 	var image string
 	var containerIpNet *net.IPNet
 	for _, label := range config.Labels {
-		afterImage, foundImage := strings.CutPrefix(label, "image=")
-		if foundImage {
-			image = afterImage
+		if after, found := strings.CutPrefix(label, "image="); found {
+			image = after
 			continue
 		}
 
-		afterIp, foundIp := strings.CutPrefix(label, "ip=")
-		if foundIp {
-			ip, ipNet, err := net.ParseCIDR(afterIp)
+		if after, found := strings.CutPrefix(label, "ip="); found {
+			ip, ipNet, err := net.ParseCIDR(after)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse the container's IP: %w", err)
 			}

@@ -24,7 +24,7 @@ func NewBridgeConfigurator(getNetworkNamespaceName func(uint32) string, ipamRepo
 	}
 }
 
-func (b *bridgeConfigurator) configure(model *shared.SubnetworkModel) error {
+func (b *bridgeConfigurator) Configure(model *shared.SubnetworkModel) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -108,7 +108,7 @@ func (b *bridgeConfigurator) configure(model *shared.SubnetworkModel) error {
 	return nil
 }
 
-func (b *bridgeConfigurator) unconfigure(model *shared.SubnetworkModel) error {
+func (b *bridgeConfigurator) Unconfigure(model *shared.SubnetworkModel) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 

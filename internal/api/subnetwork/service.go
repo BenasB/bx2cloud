@@ -36,7 +36,7 @@ func (s *service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRe
 
 	// TODO: (This PR) Handle things that are connected to this subnetwork
 
-	if err := s.configurator.unconfigure(subnetwork); err != nil {
+	if err := s.configurator.Unconfigure(subnetwork); err != nil {
 		return nil, err
 	}
 
@@ -61,7 +61,7 @@ func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 		return nil, err
 	}
 
-	if err := s.configurator.configure(returnedSubnetwork); err != nil {
+	if err := s.configurator.Configure(returnedSubnetwork); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func (s *service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (
 		return nil, err
 	}
 
-	if err := s.configurator.configure(subnetwork); err != nil {
+	if err := s.configurator.Configure(subnetwork); err != nil {
 		return nil, err
 	}
 

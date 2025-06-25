@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/opencontainers/go-digest"
-	imgspec "github.com/opencontainers/image-spec/specs-go/v1"
+	imgspecs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type RegistryEntity string
@@ -27,7 +27,8 @@ const (
 )
 
 type Puller interface {
-	PrepareRootFs(id uint32, imageName string) (string, error)
+	GatherImageMetadata(imageName string) (*imageMetadata, error)
+	PrepareRootFs(id uint32, metadata *imageMetadata) (string, error)
 	RemoveRootFs(id uint32) error
 }
 
@@ -38,6 +39,12 @@ type flatPuller struct {
 	client *http.Client
 	os     string
 	arch   string
+}
+
+type imageMetadata struct {
+	Image    *imgspecs.Image
+	manifest *imgspecs.Manifest
+	context  *imageContext // Ideally this should not be exposed out of the Puller interface, since it is an implementation detail
 }
 
 type imageContext struct {
@@ -61,75 +68,81 @@ func NewFlatPuller() (*flatPuller, error) {
 	}, nil
 }
 
-func (p *flatPuller) PrepareRootFs(id uint32, imageName string) (string, error) {
+func (p *flatPuller) GatherImageMetadata(imageName string) (*imageMetadata, error) {
 	ref, context := p.parseImageName(imageName)
 
 	initialManifestBytes, contentType, err := p.fetchRegistry(ref, REGISTRY_ENTITY_MANIFEST, context)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch initial manifest: %w", err)
+		return nil, fmt.Errorf("failed to fetch initial manifest: %w", err)
 	}
 
-	var manifest imgspec.Manifest
+	var manifest imgspecs.Manifest
 	switch contentType {
 	case "application/vnd.docker.distribution.manifest.list.v2+json":
 		fallthrough
-	case imgspec.MediaTypeImageIndex: // We discovered a manifest index, need to locate the correct image manifest
-		var index imgspec.Index
+	case imgspecs.MediaTypeImageIndex: // We discovered a manifest index, need to locate the correct image manifest
+		var index imgspecs.Index
 		if err := json.Unmarshal(initialManifestBytes, &index); err != nil {
-			return "", fmt.Errorf("failed to decode index: %w", err)
+			return nil, fmt.Errorf("failed to decode index: %w", err)
 		}
 
 		digest, err := p.findManifestDigestInIndex(&index)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		manifestBytes, _, err := p.fetchRegistry(digest.String(), REGISTRY_ENTITY_MANIFEST, context)
 		if err != nil {
-			return "", fmt.Errorf("failed to fetch manifest: %w", err)
+			return nil, fmt.Errorf("failed to fetch manifest: %w", err)
 		}
 
 		if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-			return "", fmt.Errorf("failed to decode manifest: %w", err)
+			return nil, fmt.Errorf("failed to decode manifest: %w", err)
 		}
 	case "application/vnd.docker.distribution.manifest.v2+json":
 		fallthrough
-	case imgspec.MediaTypeImageManifest:
+	case imgspecs.MediaTypeImageManifest:
 		if err := json.Unmarshal(initialManifestBytes, &manifest); err != nil {
-			return "", fmt.Errorf("failed to decode manifest: %w", err)
+			return nil, fmt.Errorf("failed to decode manifest: %w", err)
 		}
 	default:
-		return "", fmt.Errorf("unsupported initial manifest content type %q", contentType)
+		return nil, fmt.Errorf("unsupported initial manifest content type %q", contentType)
 	}
 
-	if manifest.Config.MediaType != imgspec.MediaTypeImageConfig &&
+	if manifest.Config.MediaType != imgspecs.MediaTypeImageConfig &&
 		manifest.Config.MediaType != "application/vnd.docker.container.image.v1+json" {
-		return "", fmt.Errorf("unsupported config content type %q", contentType)
+		return nil, fmt.Errorf("unsupported config content type %q", contentType)
 	}
 
 	configBytes, _, err := p.fetchRegistry(manifest.Config.Digest.String(), REGISTRY_ENTITY_BLOB, context)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch config: %w", err)
+		return nil, fmt.Errorf("failed to fetch config: %w", err)
 	}
 
-	var config imgspec.Image
+	var config imgspecs.Image
 	if err := json.Unmarshal(configBytes, &config); err != nil {
-		return "", fmt.Errorf("failed to decode config: %w", err)
+		return nil, fmt.Errorf("failed to decode config: %w", err)
 	}
 
 	if config.Platform.OS != p.os || config.Platform.Architecture != p.arch {
-		return "", fmt.Errorf("failed to find an image for %s/%s", p.os, p.arch)
+		return nil, fmt.Errorf("failed to find an image for %s/%s", p.os, p.arch)
 	}
 
-	// TODO: (This PR) take config.Config and turn into libcontainer.Process
+	return &imageMetadata{
+		Image:    &config,
+		manifest: &manifest,
+		context:  context,
+	}, nil
+}
 
+func (p *flatPuller) PrepareRootFs(id uint32, metadata *imageMetadata) (string, error) {
 	rootfsDir := p.getRootFsDir(id)
 	if _, err := os.Stat(rootfsDir); err == nil {
 		return "", fmt.Errorf("something already exsits at the rootfs path %q", rootfsDir)
 	}
 
-	for _, layer := range manifest.Layers {
-		err := p.fetchAndUnpackLayer(layer.Digest.String(), context, rootfsDir)
+	for _, layer := range metadata.manifest.Layers {
+		err := p.fetchAndUnpackLayer(layer.Digest.String(), metadata.context, rootfsDir)
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch and unpack layer: %w", err)
 		}
@@ -206,11 +219,7 @@ func (p *flatPuller) requestRegistry(ref string, entity RegistryEntity, context 
 	return resp, nil
 }
 
-func (p *flatPuller) fetchRegistry(
-	ref string,
-	entity RegistryEntity,
-	context *imageContext,
-) ([]byte, string, error) {
+func (p *flatPuller) fetchRegistry(ref string, entity RegistryEntity, context *imageContext) ([]byte, string, error) {
 	resp, err := p.requestRegistry(ref, entity, context)
 	if err != nil {
 		return nil, "", err
@@ -271,6 +280,13 @@ func (p *flatPuller) fetchAndUnpackLayer(ref string, context *imageContext, dir 
 			if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
 				return err
 			}
+
+			if err := os.Chown(targetPath, header.Uid, header.Gid); err != nil {
+				return err
+			}
+			if err := os.Chmod(targetPath, os.FileMode(header.Mode)); err != nil {
+				return err
+			}
 		case tar.TypeReg:
 			// Ensure parent dir exists
 			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
@@ -281,6 +297,10 @@ func (p *flatPuller) fetchAndUnpackLayer(ref string, context *imageContext, dir 
 				return err
 			}
 			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
+				return err
+			}
+			if err := outFile.Chown(header.Uid, header.Gid); err != nil {
 				outFile.Close()
 				return err
 			}
@@ -305,6 +325,13 @@ func (p *flatPuller) fetchAndUnpackLayer(ref string, context *imageContext, dir 
 			oldname := filepath.Join(dir, header.Linkname)
 
 			if err := os.Link(oldname, targetPath); err != nil {
+				return err
+			}
+
+			if err := os.Chown(targetPath, header.Uid, header.Gid); err != nil {
+				return err
+			}
+			if err := os.Chmod(targetPath, os.FileMode(header.Mode)); err != nil {
 				return err
 			}
 		default:
@@ -406,7 +433,7 @@ func (p *flatPuller) parseWwwAuthenticate(header string) map[string]string {
 	return params
 }
 
-func (p *flatPuller) findManifestDigestInIndex(index *imgspec.Index) (*digest.Digest, error) {
+func (p *flatPuller) findManifestDigestInIndex(index *imgspecs.Index) (*digest.Digest, error) {
 	for _, manifest := range index.Manifests {
 		if manifest.Platform.OS != p.os || manifest.Platform.Architecture != p.arch {
 			continue

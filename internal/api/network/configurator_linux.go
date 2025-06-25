@@ -67,7 +67,7 @@ func NewNamespaceConfigurator() (*namespaceConfigurator, error) {
 	}, nil
 }
 
-func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
+func (n *namespaceConfigurator) Configure(model *shared.NetworkModel) error {
 	nsName := n.GetNetworkNamespaceName(model.Id)
 
 	runtime.LockOSThread()
@@ -124,7 +124,7 @@ func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
 	return nil
 }
 
-func (n *namespaceConfigurator) unconfigure(model *shared.NetworkModel) error {
+func (n *namespaceConfigurator) Unconfigure(model *shared.NetworkModel) error {
 	nsName := n.GetNetworkNamespaceName(model.Id)
 
 	runtime.LockOSThread()

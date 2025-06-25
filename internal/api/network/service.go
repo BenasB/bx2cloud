@@ -48,7 +48,7 @@ func (s *service) Delete(ctx context.Context, req *pb.NetworkIdentificationReque
 		return nil, err
 	}
 
-	if err := s.configurator.unconfigure(network); err != nil {
+	if err := s.configurator.Unconfigure(network); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func (s *service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*
 	}
 
 	// TODO: eventual consistency mechanism?
-	if err := s.configurator.configure(returnedNetwork); err != nil {
+	if err := s.configurator.Configure(returnedNetwork); err != nil {
 		return nil, err
 	}
 
@@ -82,7 +82,7 @@ func (s *service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb
 		return nil, err
 	}
 
-	if err := s.configurator.configure(network); err != nil {
+	if err := s.configurator.Configure(network); err != nil {
 		return nil, err
 	}
 

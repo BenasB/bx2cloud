@@ -5,8 +5,8 @@ import (
 )
 
 type configurator interface {
-	configure(model *shared.NetworkModel) error
-	unconfigure(model *shared.NetworkModel) error
+	Configure(model *shared.NetworkModel) error
+	Unconfigure(model *shared.NetworkModel) error
 }
 
 var _ configurator = &mockConfigurator{}
@@ -17,10 +17,10 @@ func NewMockConfigurator() configurator {
 	return &mockConfigurator{}
 }
 
-func (m *mockConfigurator) configure(model *shared.NetworkModel) error {
+func (m *mockConfigurator) Configure(model *shared.NetworkModel) error {
 	return nil
 }
 
-func (m *mockConfigurator) unconfigure(model *shared.NetworkModel) error {
+func (m *mockConfigurator) Unconfigure(model *shared.NetworkModel) error {
 	return nil
 }
