@@ -19,7 +19,6 @@ import (
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/utils"
-	runspecs "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -173,130 +172,16 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
 	}
 
-	dnsSource := "/etc/resolv.conf"
-	const systemdDnsSource = "/run/systemd/resolve/resolv.conf"
-	if _, err := os.Stat(systemdDnsSource); err == nil {
-		dnsSource = systemdDnsSource
+	spec := imageSpecToRuntimeSpec(id, rootFsDir, &imgMetadata.Image.Config)
+	creationModel := &shared.ContainerCreationModel{
+		Id:           id,
+		Ip:           ip,
+		SubnetworkId: subnetwork.Id,
+		Image:        req.Image,
+		Spec:         spec,
 	}
 
-	// TODO: (This PR) Move out mapping logic somewhere
-
-	imgConf := imgMetadata.Image.Config
-
-	user := runspecs.User{}
-	userParts := strings.Split(imgConf.User, ":")
-	if len(userParts) == 2 {
-		uid, uidErr := strconv.ParseUint(userParts[0], 10, 32)
-		gid, gidErr := strconv.ParseUint(userParts[1], 10, 32)
-		if uidErr == nil && gidErr == nil {
-			user.UID = uint32(uid)
-			user.GID = uint32(gid)
-		} else {
-			user.Username = imgConf.User
-		}
-	} else {
-		if uid, err := strconv.ParseUint(imgConf.User, 10, 32); err == nil {
-			user.UID = uint32(uid)
-		} else {
-			user.Username = imgConf.User
-		}
-	}
-
-	var args []string
-	switch {
-	case len(imgConf.Entrypoint) > 0:
-		args = append([]string{}, imgConf.Entrypoint...)
-		args = append(args, imgConf.Cmd...)
-	case len(imgConf.Cmd) > 0:
-		args = []string{"/bin/sh", "-c", strings.Join(imgConf.Cmd, " ")}
-	default:
-		args = []string{"/bin/sh"}
-	}
-
-	env := make([]string, len(imgConf.Env))
-	copy(env, imgConf.Env)
-	pathEnvFound := false
-	for _, e := range env {
-		if strings.HasPrefix(e, "PATH=") {
-			pathEnvFound = true
-			break
-		}
-	}
-
-	if !pathEnvFound {
-		env = append(env, "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-	}
-
-	process := runspecs.Process{
-		User: user,
-		Args: args,
-		Env:  env,
-		Cwd:  imgConf.WorkingDir,
-	}
-
-	spec := &runspecs.Spec{
-		Version: runspecs.Version,
-		Root: &runspecs.Root{
-			Path:     rootFsDir,
-			Readonly: false,
-		},
-		Process: &process,
-		Mounts: []runspecs.Mount{
-			{
-				Destination: "/proc",
-				Type:        "proc",
-				Source:      "proc",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev/pts",
-				Type:        "devpts",
-				Source:      "devpts",
-				Options:     []string{"nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"},
-			},
-			{
-				Destination: "/sys",
-				Type:        "sysfs",
-				Source:      "sysfs",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev/shm",
-				Type:        "tmpfs",
-				Source:      "shm",
-				Options: []string{
-					"nosuid",
-					"noexec",
-					"nodev",
-					"mode=1777",
-					"size=65536k",
-				},
-			},
-			{
-				Destination: "/etc/resolv.conf",
-				Type:        "bind",
-				Source:      dnsSource,
-				Options:     []string{"rbind", "ro"},
-			},
-		},
-		Linux: &runspecs.Linux{
-			Namespaces: []runspecs.LinuxNamespace{
-				{Type: runspecs.PIDNamespace},
-				{Type: runspecs.IPCNamespace},
-				{Type: runspecs.UTSNamespace},
-				{Type: runspecs.MountNamespace},
-				{Type: runspecs.NetworkNamespace},
-			},
-		},
-		Annotations: map[string]string{
-			"image":        req.Image,
-			"subnetworkId": strconv.FormatUint(uint64(subnetwork.Id), 10),
-			"ip":           ip.String(),
-		},
-		Hostname: fmt.Sprintf("container-%d", id),
-	}
-
-	container, err := s.repository.Add(id, spec)
+	container, err := s.repository.Add(creationModel)
 	if err != nil {
 		return nil, err
 	}

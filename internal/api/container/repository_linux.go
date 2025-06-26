@@ -13,7 +13,6 @@ import (
 	_ "github.com/opencontainers/cgroups/devices"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/specconv"
-	runspecs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 var _ shared.ContainerRepository = &libcontainerRepository{}
@@ -117,21 +116,25 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.Con
 }
 
 // Returns a container in a started state
-func (r *libcontainerRepository) Add(id uint32, spec *runspecs.Spec) (*shared.ContainerModel, error) {
+func (r *libcontainerRepository) Add(creationModel *shared.ContainerCreationModel) (*shared.ContainerModel, error) {
 	config, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
-		CgroupName:       fmt.Sprintf("bx2cloud-container-%d", id),
+		CgroupName:       fmt.Sprintf("bx2cloud-container-%d", creationModel.Id),
 		UseSystemdCgroup: false,
 		NoPivotRoot:      false,
 		NoNewKeyring:     false,
-		Spec:             spec,
+		Spec:             creationModel.Spec,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the libcontainer config: %w", err)
 	}
 
+	config.Labels = append(config.Labels, fmt.Sprintf("image=%s", creationModel.Image))
+	config.Labels = append(config.Labels, fmt.Sprintf("subnetworkId=%d", creationModel.SubnetworkId))
+	config.Labels = append(config.Labels, fmt.Sprintf("ip=%s", creationModel.Ip.String()))
+
 	container, err := libcontainer.Create(
 		r.root,
-		strconv.FormatInt(int64(id), 10),
+		strconv.FormatInt(int64(creationModel.Id), 10),
 		config,
 	)
 	if err != nil {
@@ -139,11 +142,11 @@ func (r *libcontainerRepository) Add(id uint32, spec *runspecs.Spec) (*shared.Co
 	}
 
 	initProcess := &libcontainer.Process{
-		Args: spec.Process.Args,
-		Env:  spec.Process.Env,
-		Cwd:  spec.Process.Cwd,
-		UID:  int(spec.Process.User.UID),
-		GID:  int(spec.Process.User.GID),
+		Args: creationModel.Spec.Process.Args,
+		Env:  creationModel.Spec.Process.Env,
+		Cwd:  creationModel.Spec.Process.Cwd,
+		UID:  int(creationModel.Spec.Process.User.UID),
+		GID:  int(creationModel.Spec.Process.User.GID),
 		// Not everything is mapped here (yet?)
 		Init: true,
 	}
