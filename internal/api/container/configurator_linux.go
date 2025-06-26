@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"runtime"
-	"strings"
 
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -14,8 +13,8 @@ import (
 )
 
 type configurator interface {
-	Configure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
-	Unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
+	Configure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
+	Unconfigure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
 }
 
 var _ configurator = &namespaceConfigurator{}
@@ -34,7 +33,7 @@ func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBr
 	}
 }
 
-func (n *namespaceConfigurator) Configure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
+func (n *namespaceConfigurator) Configure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
 	if err != nil {
@@ -42,9 +41,9 @@ func (n *namespaceConfigurator) Configure(model *shared.ContainerModel, subnetwo
 	}
 	defer networkNs.Close()
 
-	state, err := model.OCIState()
+	state, err := model.GetState()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve the container's current state: %w", err)
+		return fmt.Errorf("failed to retrieve the container's state: %w", err)
 	}
 
 	containerNsPath := (&configs.Namespace{Type: configs.NEWNET}).GetPath(state.Pid)
@@ -54,26 +53,7 @@ func (n *namespaceConfigurator) Configure(model *shared.ContainerModel, subnetwo
 	}
 	defer containerNs.Close()
 
-	var containerVethIpNet *net.IPNet
-	for _, label := range model.Config().Labels {
-		after, found := strings.CutPrefix(label, "ip=")
-		if found {
-			ip, ipNet, err := net.ParseCIDR(after)
-			if err != nil {
-				return fmt.Errorf("failed to parse the container's IP: %w", err)
-			}
-
-			containerVethIpNet = &net.IPNet{
-				IP:   ip.To4(),
-				Mask: ipNet.Mask,
-			}
-			break
-		}
-	}
-
-	if containerVethIpNet == nil {
-		return fmt.Errorf("failed to retrieve the container's IP")
-	}
+	modelData := model.GetData()
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -99,8 +79,8 @@ func (n *namespaceConfigurator) Configure(model *shared.ContainerModel, subnetwo
 		return fmt.Errorf("failed to retrieve the subnetwork's bridge in the network's namespace: %w", err)
 	}
 
-	networkVethName := n.getNetworkVethName(model)
-	containerVethName := n.getContainerVethName(model)
+	networkVethName := n.getNetworkVethName(modelData)
+	containerVethName := n.getContainerVethName(modelData)
 	networkVeth, err := netlink.LinkByName(networkVethName)
 	if err != nil {
 		la := netlink.NewLinkAttrs()
@@ -140,7 +120,7 @@ func (n *namespaceConfigurator) Configure(model *shared.ContainerModel, subnetwo
 	}
 
 	containerVethAddr := &netlink.Addr{
-		IPNet: containerVethIpNet,
+		IPNet: modelData.Ip,
 	}
 
 	var containerVethIpExists = false
@@ -201,18 +181,20 @@ func (n *namespaceConfigurator) Configure(model *shared.ContainerModel, subnetwo
 		return fmt.Errorf("failed to switch to the original network namespace: %w", err)
 	}
 
-	log.Printf("Successfully configured container with the id %s", model.ID())
+	log.Printf("Successfully configured container with the id %d", modelData.Id)
 
 	return nil
 }
 
-func (n *namespaceConfigurator) Unconfigure(model *shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
+func (n *namespaceConfigurator) Unconfigure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the network's namespace: %w", err)
 	}
 	defer networkNs.Close()
+
+	modelData := model.GetData()
 
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -232,7 +214,7 @@ func (n *namespaceConfigurator) Unconfigure(model *shared.ContainerModel, subnet
 		return fmt.Errorf("failed to switch to the network's namespace: %w", err)
 	}
 
-	networkVethName := n.getNetworkVethName(model)
+	networkVethName := n.getNetworkVethName(modelData)
 	if networkVeth, err := netlink.LinkByName(networkVethName); err == nil {
 		if err := netlink.LinkDel(networkVeth); err != nil {
 			return fmt.Errorf("failed to remove the veth pair: %w", err)
@@ -243,15 +225,15 @@ func (n *namespaceConfigurator) Unconfigure(model *shared.ContainerModel, subnet
 		return fmt.Errorf("failed to switch to the original network namespace: %w", err)
 	}
 
-	log.Printf("Successfully unconfigured container with the id %s", model.ID())
+	log.Printf("Successfully unconfigured container with the id %d", modelData.Id)
 
 	return nil
 }
 
-func (n *namespaceConfigurator) getNetworkVethName(model *shared.ContainerModel) string {
-	return fmt.Sprintf("bx2-c-%s", model.ID())
+func (n *namespaceConfigurator) getNetworkVethName(modelData *shared.ContainerModelData) string {
+	return fmt.Sprintf("bx2-c-%d", modelData.Id)
 }
 
-func (n *namespaceConfigurator) getContainerVethName(model *shared.ContainerModel) string {
-	return fmt.Sprintf("bx2-c-%s-ns", model.ID())
+func (n *namespaceConfigurator) getContainerVethName(modelData *shared.ContainerModelData) string {
+	return fmt.Sprintf("bx2-c-%d-ns", modelData.Id)
 }

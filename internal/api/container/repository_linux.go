@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/BenasB/bx2cloud/internal/api/id"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	_ "github.com/opencontainers/cgroups/devices"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/specconv"
+	"github.com/opencontainers/runc/libcontainer/utils"
+	runspecs "github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
 )
 
 var _ shared.ContainerRepository = &libcontainerRepository{}
@@ -74,12 +79,117 @@ func NewLibcontainerRepository() (shared.ContainerRepository, error) {
 	}, nil
 }
 
-func (r *libcontainerRepository) Get(id uint32) (*shared.ContainerModel, error) {
-	return libcontainer.Load(r.root, strconv.FormatInt(int64(id), 10))
+func (w *wrappedContainer) StartInteractive(spec *runspecs.Process) (shared.ContainerInteractiveProcess, error) {
+	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a socket pair for console fd retrieval: %w", err)
+	}
+	parentConsoleSocket := os.NewFile(uintptr(fds[1]), "parent-console-socket")
+	childConsoleSocket := os.NewFile(uintptr(fds[0]), "child-console-socket")
+	defer parentConsoleSocket.Close()
+	defer childConsoleSocket.Close()
+
+	process := &libcontainer.Process{
+		Args:          spec.Args,
+		Env:           spec.Env,
+		ConsoleSocket: childConsoleSocket,
+		ConsoleWidth:  uint16(spec.ConsoleSize.Width),
+		ConsoleHeight: uint16(spec.ConsoleSize.Height),
+		Init:          false,
+	}
+
+	if err := w.container.Start(process); err != nil {
+		return nil, fmt.Errorf("failed to start the container process: %w", err)
+	}
+
+	ptyMaster, err := utils.RecvFile(parentConsoleSocket)
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive console master fd: %w", err)
+	}
+
+	return &wrappedProcess{
+		pty:     ptyMaster,
+		process: process,
+	}, nil
 }
 
-func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.ContainerModel, <-chan error) {
-	results := make(chan *shared.ContainerModel, 0)
+func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Container) (shared.ContainerModel, error) {
+	id64, err := strconv.ParseUint(container.ID(), 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the container's id: %w", err)
+	}
+
+	state, err := container.State()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve the container's state: %w", err)
+	}
+
+	data := &shared.ContainerModelData{
+		Id:        uint32(id64),
+		CreatedAt: state.Created,
+	}
+	var subnetworkId *uint32
+	for _, label := range container.Config().Labels {
+		if after, found := strings.CutPrefix(label, "image="); found {
+			data.Image = after
+			continue
+		}
+
+		if after, found := strings.CutPrefix(label, "ip="); found {
+			ip, ipNet, err := net.ParseCIDR(after)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse the container's IP: %w", err)
+			}
+
+			data.Ip = &net.IPNet{
+				IP:   ip.To4(),
+				Mask: ipNet.Mask,
+			}
+			continue
+		}
+
+		if after, found := strings.CutPrefix(label, "subnetworkId="); found {
+			id64, err := strconv.ParseUint(after, 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse the container's subnetwork id: %w", err)
+			}
+			id32 := uint32(id64)
+			subnetworkId = &id32
+			continue
+		}
+	}
+
+	if data.Image == "" {
+		return nil, fmt.Errorf("failed to locate metadata about the container's image")
+	}
+
+	if data.Ip == nil {
+		return nil, fmt.Errorf("failed to locate metadata about the container's ip")
+	}
+
+	if subnetworkId == nil {
+		return nil, fmt.Errorf("failed to locate metadata about the container's subnetworkId")
+	}
+	data.SubnetworkId = *subnetworkId
+
+	return &wrappedContainer{
+		data:      data,
+		container: container,
+	}, nil
+}
+
+func (r *libcontainerRepository) Get(id uint32) (shared.ContainerModel, error) {
+	container, err := libcontainer.Load(r.root, strconv.FormatInt(int64(id), 10))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return r.mapToContainerModel(container)
+}
+
+func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan shared.ContainerModel, <-chan error) {
+	results := make(chan shared.ContainerModel, 0)
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -103,8 +213,14 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.Con
 				return
 			}
 
+			model, err := r.mapToContainerModel(container)
+			if err != nil {
+				errChan <- err
+				return
+			}
+
 			select {
-			case results <- container:
+			case results <- model:
 			case <-ctx.Done():
 				errChan <- ctx.Err()
 				return
@@ -116,7 +232,7 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan *shared.Con
 }
 
 // Returns a container in a started state
-func (r *libcontainerRepository) Add(creationModel *shared.ContainerCreationModel) (*shared.ContainerModel, error) {
+func (r *libcontainerRepository) Add(creationModel *shared.ContainerCreationModel) (shared.ContainerModel, error) {
 	config, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
 		CgroupName:       fmt.Sprintf("bx2cloud-container-%d", creationModel.Id),
 		UseSystemdCgroup: false,
@@ -155,11 +271,11 @@ func (r *libcontainerRepository) Add(creationModel *shared.ContainerCreationMode
 		return nil, fmt.Errorf("failed to run the container: %w", err)
 	}
 
-	return container, nil
+	return r.mapToContainerModel(container)
 }
 
-func (r *libcontainerRepository) Delete(id uint32) (*shared.ContainerModel, error) {
-	container, err := r.Get(id)
+func (r *libcontainerRepository) Delete(id uint32) (shared.ContainerModel, error) {
+	container, err := libcontainer.Load(r.root, strconv.FormatInt(int64(id), 10))
 	if err != nil {
 		return nil, err
 	}
@@ -168,5 +284,50 @@ func (r *libcontainerRepository) Delete(id uint32) (*shared.ContainerModel, erro
 		return nil, err
 	}
 
-	return container, nil
+	return r.mapToContainerModel(container)
+}
+
+// Wraps the libcontainer.Container implementation to provide a more generic interface used in the contract of the repository
+type wrappedContainer struct {
+	data      *shared.ContainerModelData
+	container *libcontainer.Container
+}
+
+func (w *wrappedContainer) GetData() *shared.ContainerModelData {
+	return w.data
+}
+
+func (w *wrappedContainer) GetState() (*runspecs.State, error) {
+	return w.container.OCIState()
+}
+
+func (w *wrappedContainer) Exec() error {
+	return w.container.Exec()
+}
+
+func (w *wrappedContainer) Signal(s os.Signal) error {
+	return w.container.Signal(s)
+}
+
+// Wraps the libcontainer.Process implementation to provide a more generic interface used in the contract of the repository
+type wrappedProcess struct {
+	pty     *os.File
+	process *libcontainer.Process
+}
+
+func (w *wrappedProcess) GetPty() *os.File {
+	return w.pty
+}
+
+func (w *wrappedProcess) Wait() (int, error) {
+	state, err := w.process.Wait()
+	if err != nil {
+		return 0, err
+	}
+
+	return state.ExitCode(), nil
+}
+
+func (w *wrappedProcess) Signal(s os.Signal) error {
+	return w.process.Signal(s)
 }

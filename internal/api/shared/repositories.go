@@ -28,3 +28,10 @@ type IpamRepository interface {
 	Allocate(subnetwork *SubnetworkModel, resourceType IpamType) (*net.IPNet, error)
 	Deallocate(subnetwork *SubnetworkModel, ip *net.IPNet) error
 }
+
+type ContainerRepository interface {
+	Get(id uint32) (ContainerModel, error)
+	GetAll(ctx context.Context) (<-chan ContainerModel, <-chan error)
+	Add(creationModel *ContainerCreationModel) (ContainerModel, error)
+	Delete(id uint32) (ContainerModel, error)
+}

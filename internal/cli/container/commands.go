@@ -8,7 +8,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
-	"github.com/opencontainers/runc/libcontainer"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -20,8 +19,6 @@ func newWriter() *tabwriter.Writer {
 }
 
 func print(w *tabwriter.Writer, container *pb.Container) {
-	status := libcontainer.Status(container.Status)
-
 	cidr := fmt.Sprintf("%d.%d.%d.%d/%d",
 		byte(container.Address>>24),
 		byte(container.Address>>16),
@@ -29,7 +26,7 @@ func print(w *tabwriter.Writer, container *pb.Container) {
 		byte(container.Address),
 		container.PrefixLength)
 
-	fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", container.Id, container.Image, status, cidr)
+	fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", container.Id, container.Image, container.Status, cidr)
 }
 
 func List(client pb.ContainerServiceClient) error {
@@ -96,7 +93,7 @@ func Create(client pb.ContainerServiceClient) error {
 
 	req := &pb.ContainerCreationRequest{
 		SubnetworkId: 4,
-		Image:        "ubuntu:24.04",
+		Image:        "grafana/grafana",
 	}
 
 	resp, err := client.Create(context.Background(), req)

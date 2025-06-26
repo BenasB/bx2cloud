@@ -124,7 +124,7 @@ type Container struct {
 	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Address       uint32                 `protobuf:"fixed32,2,opt,name=address,proto3" json:"address,omitempty"`
 	PrefixLength  uint32                 `protobuf:"fixed32,3,opt,name=prefix_length,json=prefixLength,proto3" json:"prefix_length,omitempty"`
-	Status        int32                  `protobuf:"varint,4,opt,name=status,proto3" json:"status,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	Image         string                 `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -182,11 +182,11 @@ func (x *Container) GetPrefixLength() uint32 {
 	return 0
 }
 
-func (x *Container) GetStatus() int32 {
+func (x *Container) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
-	return 0
+	return ""
 }
 
 func (x *Container) GetImage() string {
@@ -449,7 +449,7 @@ const file_container_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
 	"\rprefix_length\x18\x03 \x01(\aR\fprefixLength\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\x05R\x06status\x12\x14\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12\x14\n" +
 	"\x05image\x18\x05 \x01(\tR\x05image\x128\n" +
 	"\tcreatedAt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x8f\x01\n" +
 	"\x14ContainerExecRequest\x12V\n" +

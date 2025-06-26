@@ -6,19 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
-	"os"
 	"os/exec"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
 	"github.com/BenasB/bx2cloud/internal/api/id"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
-	"github.com/opencontainers/runc/libcontainer"
-	"github.com/opencontainers/runc/libcontainer/utils"
+	runspecs "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -65,12 +60,12 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
-	status, err := container.Status()
+	state, err := container.GetState()
 	if err != nil {
 		log.Printf("Will skip killing the container process, since we can't determine if the container is in a running status: %v", err)
 	}
 
-	if err == nil && status == libcontainer.Running {
+	if err == nil && state.Status == runspecs.StateRunning {
 		// TODO: Send SIGTERM first to try to gracefully shut down the process
 		if err := container.Signal(unix.SIGKILL); err != nil {
 			return nil, fmt.Errorf("failed to send a kill signal to the container process: %w", err)
@@ -89,42 +84,9 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		}
 	}
 
-	var subnetworkId *uint32
-	var containerIpNet *net.IPNet
-	for _, label := range container.Config().Labels {
-		if after, found := strings.CutPrefix(label, "subnetworkId="); found {
-			id64, err := strconv.ParseUint(after, 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse the container's subnetwork id: %w", err)
-			}
-			id32 := uint32(id64)
-			subnetworkId = &id32
-			continue
-		}
+	data := container.GetData()
 
-		if after, found := strings.CutPrefix(label, "ip="); found {
-			ip, ipNet, err := net.ParseCIDR(after)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse the container's IP: %w", err)
-			}
-
-			containerIpNet = &net.IPNet{
-				IP:   ip.To4(),
-				Mask: ipNet.Mask,
-			}
-			continue
-		}
-	}
-
-	if subnetworkId == nil {
-		return nil, fmt.Errorf("failed to retrieve the container's subnetwork id")
-	}
-
-	if containerIpNet == nil {
-		return nil, fmt.Errorf("failed to retrieve the container's IP")
-	}
-
-	subnetwork, err := s.subnetworkRepository.Get(*subnetworkId)
+	subnetwork, err := s.subnetworkRepository.Get(data.SubnetworkId)
 	if err != nil {
 		return nil, err
 	}
@@ -133,15 +95,15 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
-	if err := s.imagePuller.RemoveRootFs(req.Id); err != nil {
+	if err := s.imagePuller.RemoveRootFs(data.Id); err != nil {
 		return nil, err
 	}
 
-	if err := s.ipamRepository.Deallocate(subnetwork, containerIpNet); err != nil {
+	if err := s.ipamRepository.Deallocate(subnetwork, data.Ip); err != nil {
 		return nil, fmt.Errorf("failed to deallocate an IP for the container: %w", err)
 	}
 
-	_, err = s.repository.Delete(req.Id)
+	_, err = s.repository.Delete(data.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -241,21 +203,12 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 		return fmt.Errorf("failed to retrieve the container for command execution: %w", err)
 	}
 
-	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
-	if err != nil {
-		return fmt.Errorf("failed to create a socket pair for console fd retrieval: %w", err)
-	}
-	parentConsoleSocket := os.NewFile(uintptr(fds[1]), "parent-console-socket")
-	childConsoleSocket := os.NewFile(uintptr(fds[0]), "child-console-socket")
-	defer parentConsoleSocket.Close()
-	defer childConsoleSocket.Close()
-
 	term := "xterm"
 	if init.Terminal != nil {
 		term = *init.Terminal
 	}
 
-	process := &libcontainer.Process{
+	spec := &runspecs.Process{
 		Args: []string{
 			"/bin/sh",
 			"-c",
@@ -265,23 +218,18 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			fmt.Sprintf("TERM=%s", term),
 		},
-		ConsoleSocket: childConsoleSocket,
-		ConsoleWidth:  uint16(init.ConsoleWidth),
-		ConsoleHeight: uint16(init.ConsoleHeight),
-		Init:          false,
+		ConsoleSize: &runspecs.Box{
+			Width:  uint(init.ConsoleWidth),
+			Height: uint(init.ConsoleHeight),
+		},
 	}
 
-	if err := container.Start(process); err != nil {
-		return fmt.Errorf("failed to start the container process: %w", err)
-	}
-
-	ptyMaster, err := utils.RecvFile(parentConsoleSocket)
+	process, err := container.StartInteractive(spec)
 	if err != nil {
-		return fmt.Errorf("failed to receive console master fd: %w", err)
+		return fmt.Errorf("failed to start an interactive console session: %w", err)
 	}
-	parentConsoleSocket.Close()
-	childConsoleSocket.Close()
-	defer ptyMaster.Close()
+	pty := process.GetPty()
+	defer pty.Close()
 
 	log.Printf("Established an interactive console session with container id %d", init.Identification.Id)
 
@@ -289,7 +237,7 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	go func() {
 		buf := make([]byte, 8192)
 		for {
-			n, err := ptyMaster.Read(buf)
+			n, err := pty.Read(buf)
 			if errors.Is(err, unix.EIO) {
 				// pty child was closed, which is considered a successfull result
 				results <- nil
@@ -324,7 +272,7 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 			}
 
 			if p := req.GetStdin(); p != nil {
-				if _, err := ptyMaster.Write(p); err != nil {
+				if _, err := pty.Write(p); err != nil {
 					results <- fmt.Errorf("failed to write to the master console: %w", err)
 					return
 				}
@@ -340,7 +288,7 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 		}
 	}
 
-	state, err := process.Wait()
+	exitCode, err := process.Wait()
 	if err != nil {
 		var exitErr *exec.ExitError
 		if !errors.As(err, &exitErr) {
@@ -350,7 +298,7 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 
 	err = stream.Send(&pb.ContainerExecResponse{
 		Output: &pb.ContainerExecResponse_ExitCode{
-			ExitCode: int32(state.ExitCode()),
+			ExitCode: int32(exitCode),
 		},
 	})
 
@@ -363,63 +311,23 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	return nil
 }
 
-func mapModelToDto(container *shared.ContainerModel) (*pb.Container, error) {
-	state, err := container.State()
+func mapModelToDto(container shared.ContainerModel) (*pb.Container, error) {
+	state, err := container.GetState()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retrieve the container's state: %w", err)
 	}
 
-	id, err := strconv.ParseInt(state.ID, 10, 32)
-	if err != nil {
-		return nil, err
-	}
+	data := container.GetData()
 
-	status, err := container.Status()
-	if err != nil {
-		return nil, err
-	}
-
-	config := container.Config()
-
-	var image string
-	var containerIpNet *net.IPNet
-	for _, label := range config.Labels {
-		if after, found := strings.CutPrefix(label, "image="); found {
-			image = after
-			continue
-		}
-
-		if after, found := strings.CutPrefix(label, "ip="); found {
-			ip, ipNet, err := net.ParseCIDR(after)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse the container's IP: %w", err)
-			}
-
-			containerIpNet = &net.IPNet{
-				IP:   ip.To4(),
-				Mask: ipNet.Mask,
-			}
-			continue
-		}
-	}
-
-	if image == "" {
-		return nil, fmt.Errorf("failed to locate metadata about the container's image")
-	}
-
-	if containerIpNet == nil {
-		return nil, fmt.Errorf("failed to locate metadata about the container's ip")
-	}
-
-	address := uint32(containerIpNet.IP[0])<<24 | uint32(containerIpNet.IP[1])<<16 | uint32(containerIpNet.IP[2])<<8 | uint32(containerIpNet.IP[3])
-	prefixLength, _ := containerIpNet.Mask.Size()
+	address := uint32(data.Ip.IP[0])<<24 | uint32(data.Ip.IP[1])<<16 | uint32(data.Ip.IP[2])<<8 | uint32(data.Ip.IP[3])
+	prefixLength, _ := data.Ip.Mask.Size()
 
 	return &pb.Container{
-		Id:           uint32(id),
+		Id:           data.Id,
 		Address:      address,
 		PrefixLength: uint32(prefixLength),
-		Status:       int32(status),
-		Image:        image,
-		CreatedAt:    timestamppb.New(state.Created),
+		Status:       string(state.Status),
+		Image:        data.Image,
+		CreatedAt:    timestamppb.New(data.CreatedAt),
 	}, nil
 }

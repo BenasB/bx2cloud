@@ -28,7 +28,7 @@ message Container {
     uint32 id = 1;
     fixed32 address = 2;
     fixed32 prefix_length = 3;
-    int32 status = 4;
+    string status = 4;
     string image = 5;
     google.protobuf.Timestamp createdAt = 6;
 }
