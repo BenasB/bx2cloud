@@ -465,13 +465,15 @@ const file_container_proto_rawDesc = "" +
 	"\x15ContainerExecResponse\x12\x18\n" +
 	"\x06stdout\x18\x01 \x01(\fH\x00R\x06stdout\x12\x1d\n" +
 	"\texit_code\x18\x02 \x01(\x05H\x00R\bexitCodeB\b\n" +
-	"\x06output2\xeb\x02\n" +
+	"\x06output2\xfa\x03\n" +
 	"\x10ContainerService\x12D\n" +
 	"\x03Get\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.Container\x125\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x13.bx2cloud.Container0\x01\x12A\n" +
 	"\x06Create\x12\".bx2cloud.ContainerCreationRequest\x1a\x13.bx2cloud.Container\x12J\n" +
 	"\x06Delete\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
-	"\x04Exec\x12\x1e.bx2cloud.ContainerExecRequest\x1a\x1f.bx2cloud.ContainerExecResponse(\x010\x01B,Z*github.com/BenasB/bx2cloud/internal/api/pbb\x06proto3"
+	"\x04Exec\x12\x1e.bx2cloud.ContainerExecRequest\x1a\x1f.bx2cloud.ContainerExecResponse(\x010\x01\x12F\n" +
+	"\x05Start\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.Container\x12E\n" +
+	"\x04Stop\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.ContainerB,Z*github.com/BenasB/bx2cloud/internal/api/pbb\x06proto3"
 
 var (
 	file_container_proto_rawDescOnce sync.Once
@@ -497,24 +499,28 @@ var file_container_proto_goTypes = []any{
 	(*emptypb.Empty)(nil),                      // 7: google.protobuf.Empty
 }
 var file_container_proto_depIdxs = []int32{
-	6, // 0: bx2cloud.Container.createdAt:type_name -> google.protobuf.Timestamp
-	4, // 1: bx2cloud.ContainerExecRequest.initialization:type_name -> bx2cloud.ContainerExecInitializationRequest
-	0, // 2: bx2cloud.ContainerExecInitializationRequest.identification:type_name -> bx2cloud.ContainerIdentificationRequest
-	0, // 3: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
-	7, // 4: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
-	1, // 5: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
-	0, // 6: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
-	3, // 7: bx2cloud.ContainerService.Exec:input_type -> bx2cloud.ContainerExecRequest
-	2, // 8: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
-	2, // 9: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
-	2, // 10: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
-	7, // 11: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
-	5, // 12: bx2cloud.ContainerService.Exec:output_type -> bx2cloud.ContainerExecResponse
-	8, // [8:13] is the sub-list for method output_type
-	3, // [3:8] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6,  // 0: bx2cloud.Container.createdAt:type_name -> google.protobuf.Timestamp
+	4,  // 1: bx2cloud.ContainerExecRequest.initialization:type_name -> bx2cloud.ContainerExecInitializationRequest
+	0,  // 2: bx2cloud.ContainerExecInitializationRequest.identification:type_name -> bx2cloud.ContainerIdentificationRequest
+	0,  // 3: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
+	7,  // 4: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
+	1,  // 5: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
+	0,  // 6: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
+	3,  // 7: bx2cloud.ContainerService.Exec:input_type -> bx2cloud.ContainerExecRequest
+	0,  // 8: bx2cloud.ContainerService.Start:input_type -> bx2cloud.ContainerIdentificationRequest
+	0,  // 9: bx2cloud.ContainerService.Stop:input_type -> bx2cloud.ContainerIdentificationRequest
+	2,  // 10: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
+	2,  // 11: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
+	2,  // 12: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
+	7,  // 13: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
+	5,  // 14: bx2cloud.ContainerService.Exec:output_type -> bx2cloud.ContainerExecResponse
+	2,  // 15: bx2cloud.ContainerService.Start:output_type -> bx2cloud.Container
+	2,  // 16: bx2cloud.ContainerService.Stop:output_type -> bx2cloud.Container
+	10, // [10:17] is the sub-list for method output_type
+	3,  // [3:10] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_container_proto_init() }

@@ -25,6 +25,8 @@ const (
 	ContainerService_Create_FullMethodName = "/bx2cloud.ContainerService/Create"
 	ContainerService_Delete_FullMethodName = "/bx2cloud.ContainerService/Delete"
 	ContainerService_Exec_FullMethodName   = "/bx2cloud.ContainerService/Exec"
+	ContainerService_Start_FullMethodName  = "/bx2cloud.ContainerService/Start"
+	ContainerService_Stop_FullMethodName   = "/bx2cloud.ContainerService/Stop"
 )
 
 // ContainerServiceClient is the client API for ContainerService service.
@@ -36,6 +38,8 @@ type ContainerServiceClient interface {
 	Create(ctx context.Context, in *ContainerCreationRequest, opts ...grpc.CallOption) (*Container, error)
 	Delete(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Exec(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ContainerExecRequest, ContainerExecResponse], error)
+	Start(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*Container, error)
+	Stop(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*Container, error)
 }
 
 type containerServiceClient struct {
@@ -108,6 +112,26 @@ func (c *containerServiceClient) Exec(ctx context.Context, opts ...grpc.CallOpti
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ContainerService_ExecClient = grpc.BidiStreamingClient[ContainerExecRequest, ContainerExecResponse]
 
+func (c *containerServiceClient) Start(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*Container, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Container)
+	err := c.cc.Invoke(ctx, ContainerService_Start_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *containerServiceClient) Stop(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*Container, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Container)
+	err := c.cc.Invoke(ctx, ContainerService_Stop_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ContainerServiceServer is the server API for ContainerService service.
 // All implementations must embed UnimplementedContainerServiceServer
 // for forward compatibility.
@@ -117,6 +141,8 @@ type ContainerServiceServer interface {
 	Create(context.Context, *ContainerCreationRequest) (*Container, error)
 	Delete(context.Context, *ContainerIdentificationRequest) (*emptypb.Empty, error)
 	Exec(grpc.BidiStreamingServer[ContainerExecRequest, ContainerExecResponse]) error
+	Start(context.Context, *ContainerIdentificationRequest) (*Container, error)
+	Stop(context.Context, *ContainerIdentificationRequest) (*Container, error)
 	mustEmbedUnimplementedContainerServiceServer()
 }
 
@@ -141,6 +167,12 @@ func (UnimplementedContainerServiceServer) Delete(context.Context, *ContainerIde
 }
 func (UnimplementedContainerServiceServer) Exec(grpc.BidiStreamingServer[ContainerExecRequest, ContainerExecResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method Exec not implemented")
+}
+func (UnimplementedContainerServiceServer) Start(context.Context, *ContainerIdentificationRequest) (*Container, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
+}
+func (UnimplementedContainerServiceServer) Stop(context.Context, *ContainerIdentificationRequest) (*Container, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
 func (UnimplementedContainerServiceServer) mustEmbedUnimplementedContainerServiceServer() {}
 func (UnimplementedContainerServiceServer) testEmbeddedByValue()                          {}
@@ -235,6 +267,42 @@ func _ContainerService_Exec_Handler(srv interface{}, stream grpc.ServerStream) e
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ContainerService_ExecServer = grpc.BidiStreamingServer[ContainerExecRequest, ContainerExecResponse]
 
+func _ContainerService_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ContainerIdentificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContainerServiceServer).Start(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContainerService_Start_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContainerServiceServer).Start(ctx, req.(*ContainerIdentificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContainerService_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ContainerIdentificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContainerServiceServer).Stop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContainerService_Stop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContainerServiceServer).Stop(ctx, req.(*ContainerIdentificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ContainerService_ServiceDesc is the grpc.ServiceDesc for ContainerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -253,6 +321,14 @@ var ContainerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Delete",
 			Handler:    _ContainerService_Delete_Handler,
+		},
+		{
+			MethodName: "Start",
+			Handler:    _ContainerService_Start_Handler,
+		},
+		{
+			MethodName: "Stop",
+			Handler:    _ContainerService_Stop_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

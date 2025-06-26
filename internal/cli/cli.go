@@ -254,6 +254,36 @@ func Run(args []string) exits.ExitCode {
 				return exits.BAD_ARGUMENT
 			}
 			cmdErr = container.Exec(client, uint32(id))
+		case "start":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = container.Start(client, uint32(id))
+		case "stop":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = container.Stop(client, uint32(id))
 		default:
 			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
 			return exits.UNKNOWN_SUBCOMMAND

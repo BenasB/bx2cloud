@@ -25,20 +25,22 @@ type ContainerModelData struct {
 	SubnetworkId uint32
 	Image        string
 	CreatedAt    time.Time
+	Spec         *runspecs.Spec
 }
 
 type ContainerModel interface {
 	GetData() *ContainerModelData
 	GetState() (*runspecs.State, error)
+	// Executes the user program in a 'created' container
 	Exec() error
+	Stop() error
 	StartInteractive(process *runspecs.Process) (ContainerInteractiveProcess, error)
-	Signal(os.Signal) error
 }
 
 type ContainerInteractiveProcess interface {
 	GetPty() *os.File
 	Wait() (int, error)
-	Signal(os.Signal) error
+	Stop() error
 }
 
 type ContainerCreationModel struct {

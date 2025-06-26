@@ -32,6 +32,7 @@ type IpamRepository interface {
 type ContainerRepository interface {
 	Get(id uint32) (ContainerModel, error)
 	GetAll(ctx context.Context) (<-chan ContainerModel, <-chan error)
-	Add(creationModel *ContainerCreationModel) (ContainerModel, error)
+	// Returns a container in a 'created' state
+	Create(creationModel *ContainerCreationModel) (ContainerModel, error)
 	Delete(id uint32) (ContainerModel, error)
 }

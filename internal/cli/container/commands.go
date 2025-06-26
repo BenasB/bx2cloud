@@ -190,3 +190,31 @@ func Exec(client pb.ContainerServiceClient, id uint32) error {
 
 	return nil
 }
+
+func Start(client pb.ContainerServiceClient, id uint32) error {
+	resp, err := client.Start(context.Background(), &pb.ContainerIdentificationRequest{
+		Id: id,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Container %d is now %q\n", resp.Id, resp.Status)
+
+	return nil
+}
+
+func Stop(client pb.ContainerServiceClient, id uint32) error {
+	resp, err := client.Stop(context.Background(), &pb.ContainerIdentificationRequest{
+		Id: id,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Container %d is now %q\n", resp.Id, resp.Status)
+
+	return nil
+}

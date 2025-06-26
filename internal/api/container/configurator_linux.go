@@ -12,11 +12,6 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-type configurator interface {
-	Configure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
-	Unconfigure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
-}
-
 var _ configurator = &namespaceConfigurator{}
 
 type namespaceConfigurator struct {

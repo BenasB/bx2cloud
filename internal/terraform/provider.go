@@ -19,6 +19,7 @@ type bx2cloudProviderModel struct {
 	Host types.String `tfsdk:"host"`
 }
 
+// TODO: (This PR) Add container support for the terraform provider
 type Bx2cloudClients struct {
 	Network    pb.NetworkServiceClient
 	Subnetwork pb.SubnetworkServiceClient

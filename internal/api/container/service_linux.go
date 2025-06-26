@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os/exec"
-	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
 	"github.com/BenasB/bx2cloud/internal/api/id"
@@ -66,21 +65,8 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 	}
 
 	if err == nil && state.Status == runspecs.StateRunning {
-		// TODO: Send SIGTERM first to try to gracefully shut down the process
-		if err := container.Signal(unix.SIGKILL); err != nil {
-			return nil, fmt.Errorf("failed to send a kill signal to the container process: %w", err)
-		}
-		processIsRunning := true
-		for range 100 {
-			time.Sleep(100 * time.Millisecond)
-			if err := container.Signal(unix.Signal(0)); err != nil {
-				processIsRunning = false
-				break // Process is no longer running
-			}
-		}
-
-		if processIsRunning {
-			return nil, fmt.Errorf("failed to kill the container process: %w", err)
+		if err := container.Stop(); err != nil {
+			return nil, err
 		}
 	}
 
@@ -107,6 +93,10 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: (This PR) IMPORTANT! do not leak processes, it must be wait'ed for full cleanup (?)
+	// Debug: try to create and then delete a container, you will see something similar to:
+	// 472       6128 17.1  0.0      0     0 ?        Zs   21:43   0:02 [grafana] <defunct>
 
 	return &emptypb.Empty{}, nil
 }
@@ -143,7 +133,7 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		Spec:         spec,
 	}
 
-	container, err := s.repository.Add(creationModel)
+	container, err := s.repository.Create(creationModel)
 	if err != nil {
 		return nil, err
 	}
@@ -283,8 +273,8 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	err = <-results
 
 	if err != nil {
-		if signalErr := process.Signal(unix.SIGKILL); signalErr != nil {
-			return fmt.Errorf("failed to kill the exec process: %w, when the original error was: %w", signalErr, err)
+		if stopErr := process.Stop(); stopErr != nil {
+			return fmt.Errorf("failed to kill the exec process: %w, when the original error was: %w", stopErr, err)
 		}
 	}
 
@@ -309,6 +299,81 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	log.Printf("Successfully finished an interactive console session with container id %d", init.Identification.Id)
 
 	return nil
+}
+
+func (s *service) Start(ctx context.Context, req *pb.ContainerIdentificationRequest) (*pb.Container, error) {
+	container, err := s.repository.Get(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	data := container.GetData()
+	state, err := container.GetState()
+	if err != nil {
+		return nil, err
+	}
+
+	if state.Status != runspecs.StateStopped {
+		return nil, fmt.Errorf("can't start a container that is not %q", runspecs.StateStopped)
+	}
+
+	subnetwork, err := s.subnetworkRepository.Get(data.SubnetworkId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.Unconfigure(container, subnetwork); err != nil {
+		return nil, err
+	}
+
+	if _, err := s.repository.Delete(data.Id); err != nil {
+		return nil, err
+	}
+
+	creationModel := &shared.ContainerCreationModel{
+		Id:           data.Id,
+		Ip:           data.Ip,
+		SubnetworkId: subnetwork.Id,
+		Image:        data.Image,
+		Spec:         data.Spec,
+	}
+
+	newContainer, err := s.repository.Create(creationModel)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.configurator.Configure(newContainer, subnetwork); err != nil {
+		return nil, err
+	}
+
+	if err := newContainer.Exec(); err != nil {
+		return nil, err
+	}
+
+	return mapModelToDto(newContainer)
+}
+
+func (s *service) Stop(ctx context.Context, req *pb.ContainerIdentificationRequest) (*pb.Container, error) {
+	container, err := s.repository.Get(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := container.GetState()
+	if err != nil {
+		return nil, err
+	}
+
+	if state.Status != runspecs.StateRunning {
+		return nil, fmt.Errorf("can't stop a container that is not %q", runspecs.StateRunning)
+	}
+
+	if err := container.Stop(); err != nil {
+		return nil, err
+	}
+
+	return mapModelToDto(container)
 }
 
 func mapModelToDto(container shared.ContainerModel) (*pb.Container, error) {
