@@ -54,12 +54,12 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 
 	process, err := container.StartAdditionalProcess(spec)
 	if err != nil {
-		return fmt.Errorf("failed to start an interactive console session: %w", err)
+		return fmt.Errorf("failed to start an additional process in the container: %w", err)
 	}
 	pty := process.GetPty()
 	defer pty.Close()
 
-	log.Printf("Established an interactive console session with container id %d", init.Identification.Id)
+	log.Printf("Started an additional process in container %d", init.Identification.Id)
 
 	results := make(chan error, 2)
 	go func() {
@@ -134,7 +134,7 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 		return fmt.Errorf("failed to send the exit code: %w", err)
 	}
 
-	log.Printf("Successfully finished an interactive console session with container id %d", init.Identification.Id)
+	log.Printf("Successfully finished an additional process in container %d", init.Identification.Id)
 
 	return nil
 }

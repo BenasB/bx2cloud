@@ -34,10 +34,10 @@ type ContainerModel interface {
 	// Executes the user program in a 'created' container
 	Exec() error
 	Stop() error
-	StartAdditionalProcess(process *runspecs.Process) (ContainerInteractiveProcess, error)
+	StartAdditionalProcess(process *runspecs.Process) (ContainerProcess, error)
 }
 
-type ContainerInteractiveProcess interface {
+type ContainerProcess interface {
 	GetPty() *os.File
 	Wait() (int, error)
 	Stop() error
