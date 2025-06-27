@@ -27,6 +27,8 @@ type IpamRepository interface {
 	GetSubnetworkGateway(subnetwork *SubnetworkModel) *net.IPNet
 	Allocate(subnetwork *SubnetworkModel, resourceType IpamType) (*net.IPNet, error)
 	Deallocate(subnetwork *SubnetworkModel, ip *net.IPNet) error
+	// Returns the first allocation found
+	HasAllocations(subnetwork *SubnetworkModel) (IpamType, bool)
 }
 
 type ContainerRepository interface {

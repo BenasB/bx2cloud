@@ -67,6 +67,22 @@ func (r *memoryRepository) Deallocate(subnetwork *shared.SubnetworkModel, ip *ne
 	return nil
 }
 
+func (r *memoryRepository) HasAllocations(subnetwork *shared.SubnetworkModel) (shared.IpamType, bool) {
+	allocations, exists := r.subnetworkAllocations[subnetwork.Id]
+
+	if !exists {
+		return shared.IPAM_UNALLOCATED, false
+	}
+
+	for i := range allocations {
+		if allocations[i] != shared.IPAM_UNALLOCATED {
+			return allocations[i], true
+		}
+	}
+
+	return shared.IPAM_UNALLOCATED, false
+}
+
 func (r *memoryRepository) GetSubnetworkGateway(subnetwork *shared.SubnetworkModel) *net.IPNet {
 	ip := subnetwork.Address + 1
 

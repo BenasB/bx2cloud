@@ -2,6 +2,7 @@ package subnetwork
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
@@ -14,13 +15,20 @@ type service struct {
 	repository        shared.SubnetworkRepository
 	networkRepository shared.NetworkRepository
 	configurator      configurator
+	ipamRepository    shared.IpamRepository
 }
 
-func NewService(subnetworkRepository shared.SubnetworkRepository, networkRepository shared.NetworkRepository, configurator configurator) *service {
+func NewService(
+	subnetworkRepository shared.SubnetworkRepository,
+	networkRepository shared.NetworkRepository,
+	configurator configurator,
+	ipamRepository shared.IpamRepository,
+) *service {
 	return &service{
 		repository:        subnetworkRepository,
 		networkRepository: networkRepository,
 		configurator:      configurator,
+		ipamRepository:    ipamRepository,
 	}
 }
 
@@ -29,12 +37,24 @@ func (s *service) Get(ctx context.Context, req *pb.SubnetworkIdentificationReque
 }
 
 func (s *service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
-	subnetwork, err := s.repository.Delete(req.Id)
+	subnetwork, err := s.repository.Get(req.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: (This PR) Handle things that are connected to this subnetwork
+	if alloc, found := s.ipamRepository.HasAllocations(subnetwork); found {
+		switch alloc {
+		case shared.IPAM_CONTAINER:
+			return nil, fmt.Errorf("the subnetwork still has an IP allocated for a container")
+		default:
+			return nil, fmt.Errorf("the subnetwork still has an IP allocated for a resource")
+		}
+	}
+
+	_, err = s.repository.Delete(subnetwork.Id)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := s.configurator.Unconfigure(subnetwork); err != nil {
 		return nil, err

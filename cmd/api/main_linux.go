@@ -49,7 +49,7 @@ func main() {
 	}
 
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
-	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator))
+	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator, ipamRepository))
 	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator, imagePuller, ipamRepository))
 
 	log.Printf("Starting server on %s", address)

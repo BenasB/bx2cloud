@@ -11,6 +11,7 @@ import (
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
+	"github.com/BenasB/bx2cloud/internal/api/subnetwork/ipam"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -47,7 +48,8 @@ var mockConfigurator = subnetwork.NewMockConfigurator()
 func TestSubnetwork_Create(t *testing.T) {
 	repository := subnetwork.NewMemoryRepository(nil)
 	networkRepository := network.NewMemoryRepository(testNetworks)
-	service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
+	ipamRepository := ipam.NewMemoryRepository()
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
 
 	req := &pb.SubnetworkCreationRequest{
 		NetworkId:    testNetworks[0].Id,
@@ -64,7 +66,8 @@ func TestSubnetwork_Create(t *testing.T) {
 func TestSubnetwork_Create_NetworkNotFound(t *testing.T) {
 	repository := subnetwork.NewMemoryRepository(nil)
 	networkRepository := network.NewMemoryRepository(nil)
-	service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
+	ipamRepository := ipam.NewMemoryRepository()
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
 	req := &pb.SubnetworkCreationRequest{
 		NetworkId:    0,
 		Address:      binary.BigEndian.Uint32([]byte{192, 168, 0, 0}),
@@ -81,7 +84,8 @@ func TestSubnetwork_Delete(t *testing.T) {
 	for _, tt := range testSubnetworks {
 		repository := subnetwork.NewMemoryRepository(testSubnetworks)
 		networkRepository := network.NewMemoryRepository(testNetworks)
-		service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
+		ipamRepository := ipam.NewMemoryRepository()
+		service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			_, err := service.Delete(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -94,11 +98,33 @@ func TestSubnetwork_Delete(t *testing.T) {
 	}
 }
 
+func TestSubnetwork_Delete_StillAllocated(t *testing.T) {
+	repository := subnetwork.NewMemoryRepository(testSubnetworks)
+	networkRepository := network.NewMemoryRepository(testNetworks)
+	sn, err := repository.Get(testSubnetworks[0].Id)
+	if err != nil {
+		t.Error(err)
+	}
+	ipamRepository := ipam.NewMemoryRepository()
+	if _, err := ipamRepository.Allocate(sn, shared.IPAM_CONTAINER); err != nil {
+		t.Error(err)
+	}
+
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
+	_, err = service.Delete(t.Context(), &pb.SubnetworkIdentificationRequest{
+		Id: sn.Id,
+	})
+	if err == nil || !strings.Contains(err.Error(), "allocated") {
+		t.Error("Subnetwork was deleted even though it had at least 1 resource IP allocated")
+	}
+}
+
 func TestSubnetwork_Get(t *testing.T) {
 	for _, tt := range testSubnetworks {
 		repository := subnetwork.NewMemoryRepository(testSubnetworks)
 		networkRepository := network.NewMemoryRepository(nil)
-		service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
+		ipamRepository := ipam.NewMemoryRepository()
+		service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
 
 		t.Run(strconv.FormatUint(uint64(tt.Id), 10), func(t *testing.T) {
 			resp, err := service.Get(t.Context(), &pb.SubnetworkIdentificationRequest{
@@ -119,7 +145,8 @@ func TestSubnetwork_List(t *testing.T) {
 
 	repository := subnetwork.NewMemoryRepository(testSubnetworks)
 	networkRepository := network.NewMemoryRepository(nil)
-	service := subnetwork.NewService(repository, networkRepository, mockConfigurator)
+	ipamRepository := ipam.NewMemoryRepository()
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
 	service.List(&emptypb.Empty{}, stream)
 
 	if len(testSubnetworks) != len(stream.SentItems) {
