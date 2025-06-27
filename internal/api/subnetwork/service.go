@@ -68,12 +68,43 @@ func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 		return nil, err
 	}
 
-	// TODO: (This PR) Check if subnet does not overlap with other subnets in the network
-
 	newSubnetwork := &shared.SubnetworkModel{
 		NetworkId:    req.NetworkId,
 		Address:      req.Address, // TODO: #1 AND address with network mask to make sure this stores the network IP + unit test
 		PrefixLength: req.PrefixLength,
+	}
+
+	subnetworks, errors := s.repository.GetAllByNetworkId(req.NetworkId, ctx)
+
+	err := func() error {
+		for {
+			select {
+			case subnetwork, ok := <-subnetworks:
+				if !ok {
+					select {
+					case err := <-errors:
+						return err
+					default:
+						return nil
+					}
+				} else {
+					minPrefix := min(newSubnetwork.PrefixLength, subnetwork.PrefixLength)
+					a := newSubnetwork.Address & minPrefix
+					b := subnetwork.Address & minPrefix
+					if a == b {
+						return fmt.Errorf("new subnetwork would overlap with subnetwork %d", subnetwork.Id)
+					}
+				}
+			case err, ok := <-errors:
+				if ok {
+					return err
+				}
+			}
+		}
+	}()
+
+	if err != nil {
+		return nil, err
 	}
 
 	returnedSubnetwork, err := s.repository.Add(newSubnetwork)
