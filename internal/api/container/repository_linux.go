@@ -267,6 +267,12 @@ func (r *libcontainerRepository) createContainer(id uint32, config *configs.Conf
 		return nil, fmt.Errorf("failed to run the container: %w", err)
 	}
 
+	// Reap resources when the process eventually dies either due to exiting itself or exiting after a signal
+	// This stops from leaving left over zombie processes
+	go func() {
+		initProcess.Wait()
+	}()
+
 	return container, nil
 }
 

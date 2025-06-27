@@ -94,10 +94,6 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
-	// TODO: (This PR) IMPORTANT! do not leak processes, it must be wait'ed for full cleanup (?)
-	// Debug: try to create and then delete a container, you will see something similar to:
-	// 472       6128 17.1  0.0      0     0 ?        Zs   21:43   0:02 [grafana] <defunct>
-
 	return &emptypb.Empty{}, nil
 }
 
