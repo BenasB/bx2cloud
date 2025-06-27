@@ -253,7 +253,7 @@ func Run(args []string) exits.ExitCode {
 				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
-			cmdErr = container.Exec(client, uint32(id))
+			cmdErr = container.Exec(client, uint32(id), args)
 		case "start":
 			if len(args) == 0 {
 				fmt.Fprintf(os.Stderr, "Missing id argument\n")

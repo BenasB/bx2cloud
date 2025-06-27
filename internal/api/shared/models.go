@@ -34,7 +34,7 @@ type ContainerModel interface {
 	// Executes the user program in a 'created' container
 	Exec() error
 	Stop() error
-	StartInteractive(process *runspecs.Process) (ContainerInteractiveProcess, error)
+	StartAdditionalProcess(process *runspecs.Process) (ContainerInteractiveProcess, error)
 }
 
 type ContainerInteractiveProcess interface {

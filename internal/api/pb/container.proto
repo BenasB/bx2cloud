@@ -46,6 +46,7 @@ message ContainerExecInitializationRequest {
     int32 console_width = 2;
     int32 console_height = 3;
     optional string terminal = 4;
+    repeated string args = 5;
 }
 
 message ContainerExecResponse {

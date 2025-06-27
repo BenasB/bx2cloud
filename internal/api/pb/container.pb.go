@@ -291,6 +291,7 @@ type ContainerExecInitializationRequest struct {
 	ConsoleWidth   int32                           `protobuf:"varint,2,opt,name=console_width,json=consoleWidth,proto3" json:"console_width,omitempty"`
 	ConsoleHeight  int32                           `protobuf:"varint,3,opt,name=console_height,json=consoleHeight,proto3" json:"console_height,omitempty"`
 	Terminal       *string                         `protobuf:"bytes,4,opt,name=terminal,proto3,oneof" json:"terminal,omitempty"`
+	Args           []string                        `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -351,6 +352,13 @@ func (x *ContainerExecInitializationRequest) GetTerminal() string {
 		return *x.Terminal
 	}
 	return ""
+}
+
+func (x *ContainerExecInitializationRequest) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
 }
 
 type ContainerExecResponse struct {
@@ -455,12 +463,13 @@ const file_container_proto_rawDesc = "" +
 	"\x14ContainerExecRequest\x12V\n" +
 	"\x0einitialization\x18\x01 \x01(\v2,.bx2cloud.ContainerExecInitializationRequestH\x00R\x0einitialization\x12\x16\n" +
 	"\x05stdin\x18\x02 \x01(\fH\x00R\x05stdinB\a\n" +
-	"\x05input\"\xf0\x01\n" +
+	"\x05input\"\x84\x02\n" +
 	"\"ContainerExecInitializationRequest\x12P\n" +
 	"\x0eidentification\x18\x01 \x01(\v2(.bx2cloud.ContainerIdentificationRequestR\x0eidentification\x12#\n" +
 	"\rconsole_width\x18\x02 \x01(\x05R\fconsoleWidth\x12%\n" +
 	"\x0econsole_height\x18\x03 \x01(\x05R\rconsoleHeight\x12\x1f\n" +
-	"\bterminal\x18\x04 \x01(\tH\x00R\bterminal\x88\x01\x01B\v\n" +
+	"\bterminal\x18\x04 \x01(\tH\x00R\bterminal\x88\x01\x01\x12\x12\n" +
+	"\x04args\x18\x05 \x03(\tR\x04argsB\v\n" +
 	"\t_terminal\"Z\n" +
 	"\x15ContainerExecResponse\x12\x18\n" +
 	"\x06stdout\x18\x01 \x01(\fH\x00R\x06stdout\x12\x1d\n" +

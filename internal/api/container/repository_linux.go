@@ -311,7 +311,7 @@ func (w *wrappedContainer) Exec() error {
 	return w.container.Exec()
 }
 
-func (w *wrappedContainer) StartInteractive(spec *runspecs.Process) (shared.ContainerInteractiveProcess, error) {
+func (w *wrappedContainer) StartAdditionalProcess(spec *runspecs.Process) (shared.ContainerInteractiveProcess, error) {
 	status, err := w.container.Status()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve the container's status: %w", err)

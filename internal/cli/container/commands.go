@@ -106,7 +106,7 @@ func Create(client pb.ContainerServiceClient) error {
 	return nil
 }
 
-func Exec(client pb.ContainerServiceClient, id uint32) error {
+func Exec(client pb.ContainerServiceClient, id uint32, args []string) error {
 	termFd := int(os.Stdin.Fd())
 
 	if !term.IsTerminal(termFd) {
@@ -143,6 +143,7 @@ func Exec(client pb.ContainerServiceClient, id uint32) error {
 				ConsoleWidth:  int32(width),
 				ConsoleHeight: int32(height),
 				Terminal:      terminal,
+				Args:          args,
 			},
 		},
 	})

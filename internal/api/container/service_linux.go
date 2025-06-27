@@ -32,12 +32,16 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 		term = *init.Terminal
 	}
 
-	spec := &runspecs.Process{
-		Args: []string{
+	if len(init.Args) == 0 {
+		init.Args = []string{
 			"/bin/sh",
 			"-c",
 			"[ -x /bin/bash ] && exec /bin/bash || exec /bin/sh",
-		},
+		}
+	}
+
+	spec := &runspecs.Process{
+		Args: init.Args,
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			fmt.Sprintf("TERM=%s", term),
@@ -48,7 +52,7 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 		},
 	}
 
-	process, err := container.StartInteractive(spec)
+	process, err := container.StartAdditionalProcess(spec)
 	if err != nil {
 		return fmt.Errorf("failed to start an interactive console session: %w", err)
 	}
