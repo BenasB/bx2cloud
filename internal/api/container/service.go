@@ -116,6 +116,18 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
 	}
 
+	if len(req.Entrypoint) > 0 {
+		imgMetadata.Image.Config.Entrypoint = req.Entrypoint
+	}
+
+	if len(req.Cmd) > 0 {
+		imgMetadata.Image.Config.Cmd = req.Cmd
+	}
+
+	if len(req.Env) > 0 {
+		imgMetadata.Image.Config.Env = append(imgMetadata.Image.Config.Env, req.Env...)
+	}
+
 	spec := imageSpecToRuntimeSpec(id, rootFsDir, &imgMetadata.Image.Config)
 	creationModel := &shared.ContainerCreationModel{
 		Id:           id,

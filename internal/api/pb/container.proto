@@ -23,6 +23,9 @@ message ContainerIdentificationRequest {
 message ContainerCreationRequest {
     uint32 subnetwork_id = 1;
     string image = 2;
+    repeated string entrypoint = 3;
+    repeated string cmd = 4;
+    repeated string env = 5;
 }
 
 message Container {

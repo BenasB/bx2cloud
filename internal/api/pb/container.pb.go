@@ -71,6 +71,9 @@ type ContainerCreationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SubnetworkId  uint32                 `protobuf:"varint,1,opt,name=subnetwork_id,json=subnetworkId,proto3" json:"subnetwork_id,omitempty"`
 	Image         string                 `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
+	Entrypoint    []string               `protobuf:"bytes,3,rep,name=entrypoint,proto3" json:"entrypoint,omitempty"`
+	Cmd           []string               `protobuf:"bytes,4,rep,name=cmd,proto3" json:"cmd,omitempty"`
+	Env           []string               `protobuf:"bytes,5,rep,name=env,proto3" json:"env,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -117,6 +120,27 @@ func (x *ContainerCreationRequest) GetImage() string {
 		return x.Image
 	}
 	return ""
+}
+
+func (x *ContainerCreationRequest) GetEntrypoint() []string {
+	if x != nil {
+		return x.Entrypoint
+	}
+	return nil
+}
+
+func (x *ContainerCreationRequest) GetCmd() []string {
+	if x != nil {
+		return x.Cmd
+	}
+	return nil
+}
+
+func (x *ContainerCreationRequest) GetEnv() []string {
+	if x != nil {
+		return x.Env
+	}
+	return nil
 }
 
 type Container struct {
@@ -449,10 +473,15 @@ const file_container_proto_rawDesc = "" +
 	"\n" +
 	"\x0fcontainer.proto\x12\bbx2cloud\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"0\n" +
 	"\x1eContainerIdentificationRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\rR\x02id\"U\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\"\x99\x01\n" +
 	"\x18ContainerCreationRequest\x12#\n" +
 	"\rsubnetwork_id\x18\x01 \x01(\rR\fsubnetworkId\x12\x14\n" +
-	"\x05image\x18\x02 \x01(\tR\x05image\"\xc2\x01\n" +
+	"\x05image\x18\x02 \x01(\tR\x05image\x12\x1e\n" +
+	"\n" +
+	"entrypoint\x18\x03 \x03(\tR\n" +
+	"entrypoint\x12\x10\n" +
+	"\x03cmd\x18\x04 \x03(\tR\x03cmd\x12\x10\n" +
+	"\x03env\x18\x05 \x03(\tR\x03env\"\xc2\x01\n" +
 	"\tContainer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
