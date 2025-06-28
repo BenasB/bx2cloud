@@ -143,6 +143,31 @@ func TestSubnetwork_Create_Overlap(t *testing.T) {
 	}
 }
 
+func TestSubnetwork_Create_NonOverlap(t *testing.T) {
+	existingSubnetwork := &shared.SubnetworkModel{
+		Id:           1,
+		NetworkId:    testNetworks[0].Id,
+		Address:      binary.BigEndian.Uint32([]byte{10, 0, 42, 0}),
+		PrefixLength: 24,
+		CreatedAt:    timestamppb.New(time.Now().Add(-time.Hour)),
+	}
+	repository := subnetwork.NewMemoryRepository([]*shared.SubnetworkModel{existingSubnetwork})
+	networkRepository := network.NewMemoryRepository(testNetworks)
+	ipamRepository := ipam.NewMemoryRepository()
+	service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
+
+	req := &pb.SubnetworkCreationRequest{
+		NetworkId:    testNetworks[0].Id,
+		Address:      binary.BigEndian.Uint32([]byte{10, 0, 43, 0}),
+		PrefixLength: 24,
+	}
+
+	_, err := service.Create(t.Context(), req)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestSubnetwork_Delete(t *testing.T) {
 	for _, tt := range testSubnetworks {
 		repository := subnetwork.NewMemoryRepository(testSubnetworks)

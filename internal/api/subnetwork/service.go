@@ -2,7 +2,10 @@ package subnetwork
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"log"
+	"net"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
@@ -88,10 +91,13 @@ func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 						return nil
 					}
 				} else {
-					minPrefix := min(newSubnetwork.PrefixLength, subnetwork.PrefixLength)
-					a := newSubnetwork.Address & minPrefix
-					b := subnetwork.Address & minPrefix
+					minPrefixLength := min(newSubnetwork.PrefixLength, subnetwork.PrefixLength)
+					minMask := binary.BigEndian.Uint32(net.CIDRMask(int(minPrefixLength), 32))
+					a := newSubnetwork.Address & minMask
+					b := subnetwork.Address & minMask
 					if a == b {
+						log.Print(a)
+						log.Print(b)
 						return fmt.Errorf("new subnetwork would overlap with subnetwork %d", subnetwork.Id)
 					}
 				}
