@@ -1,0 +1,5 @@
+subnetworkId: 4
+image: ubuntu:24.04
+cmd:
+  - sleep
+  - infinity

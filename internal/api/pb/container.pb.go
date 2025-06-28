@@ -151,6 +151,7 @@ type Container struct {
 	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	Image         string                 `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=startedAt,proto3" json:"startedAt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -223,6 +224,13 @@ func (x *Container) GetImage() string {
 func (x *Container) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Container) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
 	}
 	return nil
 }
@@ -481,14 +489,15 @@ const file_container_proto_rawDesc = "" +
 	"entrypoint\x18\x03 \x03(\tR\n" +
 	"entrypoint\x12\x10\n" +
 	"\x03cmd\x18\x04 \x03(\tR\x03cmd\x12\x10\n" +
-	"\x03env\x18\x05 \x03(\tR\x03env\"\xc2\x01\n" +
+	"\x03env\x18\x05 \x03(\tR\x03env\"\xfc\x01\n" +
 	"\tContainer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
 	"\rprefix_length\x18\x03 \x01(\aR\fprefixLength\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12\x14\n" +
 	"\x05image\x18\x05 \x01(\tR\x05image\x128\n" +
-	"\tcreatedAt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x8f\x01\n" +
+	"\tcreatedAt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x128\n" +
+	"\tstartedAt\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\"\x8f\x01\n" +
 	"\x14ContainerExecRequest\x12V\n" +
 	"\x0einitialization\x18\x01 \x01(\v2,.bx2cloud.ContainerExecInitializationRequestH\x00R\x0einitialization\x12\x16\n" +
 	"\x05stdin\x18\x02 \x01(\fH\x00R\x05stdinB\a\n" +
@@ -538,27 +547,28 @@ var file_container_proto_goTypes = []any{
 }
 var file_container_proto_depIdxs = []int32{
 	6,  // 0: bx2cloud.Container.createdAt:type_name -> google.protobuf.Timestamp
-	4,  // 1: bx2cloud.ContainerExecRequest.initialization:type_name -> bx2cloud.ContainerExecInitializationRequest
-	0,  // 2: bx2cloud.ContainerExecInitializationRequest.identification:type_name -> bx2cloud.ContainerIdentificationRequest
-	0,  // 3: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
-	7,  // 4: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
-	1,  // 5: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
-	0,  // 6: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
-	3,  // 7: bx2cloud.ContainerService.Exec:input_type -> bx2cloud.ContainerExecRequest
-	0,  // 8: bx2cloud.ContainerService.Start:input_type -> bx2cloud.ContainerIdentificationRequest
-	0,  // 9: bx2cloud.ContainerService.Stop:input_type -> bx2cloud.ContainerIdentificationRequest
-	2,  // 10: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
-	2,  // 11: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
-	2,  // 12: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
-	7,  // 13: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
-	5,  // 14: bx2cloud.ContainerService.Exec:output_type -> bx2cloud.ContainerExecResponse
-	2,  // 15: bx2cloud.ContainerService.Start:output_type -> bx2cloud.Container
-	2,  // 16: bx2cloud.ContainerService.Stop:output_type -> bx2cloud.Container
-	10, // [10:17] is the sub-list for method output_type
-	3,  // [3:10] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	6,  // 1: bx2cloud.Container.startedAt:type_name -> google.protobuf.Timestamp
+	4,  // 2: bx2cloud.ContainerExecRequest.initialization:type_name -> bx2cloud.ContainerExecInitializationRequest
+	0,  // 3: bx2cloud.ContainerExecInitializationRequest.identification:type_name -> bx2cloud.ContainerIdentificationRequest
+	0,  // 4: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
+	7,  // 5: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
+	1,  // 6: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
+	0,  // 7: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
+	3,  // 8: bx2cloud.ContainerService.Exec:input_type -> bx2cloud.ContainerExecRequest
+	0,  // 9: bx2cloud.ContainerService.Start:input_type -> bx2cloud.ContainerIdentificationRequest
+	0,  // 10: bx2cloud.ContainerService.Stop:input_type -> bx2cloud.ContainerIdentificationRequest
+	2,  // 11: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
+	2,  // 12: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
+	2,  // 13: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
+	7,  // 14: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
+	5,  // 15: bx2cloud.ContainerService.Exec:output_type -> bx2cloud.ContainerExecResponse
+	2,  // 16: bx2cloud.ContainerService.Start:output_type -> bx2cloud.Container
+	2,  // 17: bx2cloud.ContainerService.Stop:output_type -> bx2cloud.Container
+	11, // [11:18] is the sub-list for method output_type
+	4,  // [4:11] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_container_proto_init() }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
 	"github.com/BenasB/bx2cloud/internal/api/id"
@@ -135,6 +136,7 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		SubnetworkId: subnetwork.Id,
 		Image:        req.Image,
 		Spec:         spec,
+		CreatedAt:    time.Now(),
 	}
 
 	container, err := s.repository.Create(creationModel)
@@ -217,6 +219,7 @@ func (s *service) Start(ctx context.Context, req *pb.ContainerIdentificationRequ
 		SubnetworkId: subnetwork.Id,
 		Image:        data.Image,
 		Spec:         data.Spec,
+		CreatedAt:    data.CreatedAt,
 	}
 
 	newContainer, err := s.repository.Create(creationModel)
@@ -274,6 +277,7 @@ func mapModelToDto(container shared.ContainerModel) (*pb.Container, error) {
 		PrefixLength: uint32(prefixLength),
 		Status:       string(state.Status),
 		Image:        data.Image,
+		StartedAt:    timestamppb.New(data.StartedAt),
 		CreatedAt:    timestamppb.New(data.CreatedAt),
 	}, nil
 }

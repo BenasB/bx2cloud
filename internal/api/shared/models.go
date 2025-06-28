@@ -25,6 +25,7 @@ type ContainerModelData struct {
 	SubnetworkId uint32
 	Image        string
 	CreatedAt    time.Time
+	StartedAt    time.Time
 	Spec         *runspecs.Spec
 }
 
@@ -48,5 +49,6 @@ type ContainerCreationModel struct {
 	Ip           *net.IPNet
 	SubnetworkId uint32
 	Image        string
+	CreatedAt    time.Time
 	Spec         *runspecs.Spec
 }

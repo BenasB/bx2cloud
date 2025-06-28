@@ -238,7 +238,13 @@ func Run(args []string) exits.ExitCode {
 			}
 			cmdErr = container.Delete(client, uint32(id))
 		case "create":
-			cmdErr = container.Create(client)
+			yamlBytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				cmdErr = err
+				break
+			}
+
+			cmdErr = container.Create(client, yamlBytes)
 		case "exec":
 			if len(args) == 0 {
 				fmt.Fprintf(os.Stderr, "Missing id argument\n")

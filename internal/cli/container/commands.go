@@ -6,10 +6,12 @@ import (
 	"io"
 	"os"
 	"text/tabwriter"
+	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"gopkg.in/yaml.v3"
 )
 
 func newWriter() *tabwriter.Writer {
@@ -26,7 +28,13 @@ func print(w *tabwriter.Writer, container *pb.Container) {
 		byte(container.Address),
 		container.PrefixLength)
 
-	fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", container.Id, container.Image, container.Status, cidr)
+	status := container.Status
+	if container.Status == "running" {
+		since := time.Since(container.StartedAt.AsTime())
+		status = fmt.Sprintf("%s (%s)", container.Status, since.Round(time.Second))
+	}
+
+	fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", container.Id, container.Image, status, cidr)
 }
 
 func List(client pb.ContainerServiceClient) error {
@@ -79,21 +87,22 @@ func Delete(client pb.ContainerServiceClient, id uint32) error {
 	return nil
 }
 
-func Create(client pb.ContainerServiceClient) error {
-	// input := &containerCreation{}
-	// if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
-	// 	return err
-	// }
+func Create(client pb.ContainerServiceClient, yamlBytes []byte) error {
+	input := &containerCreation{}
+	if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
+		return err
+	}
 
-	// if err := input.Validate(); err != nil {
-	// 	return err
-	// }
-
-	// TODO: (This PR) Implement a way to read the container creation request from a file or stdin.
+	if err := input.Validate(); err != nil {
+		return err
+	}
 
 	req := &pb.ContainerCreationRequest{
-		SubnetworkId: 4,
-		Image:        "grafana/grafana",
+		SubnetworkId: input.SubnetworkId,
+		Image:        input.Image,
+		Entrypoint:   input.Entrypoint,
+		Cmd:          input.Cmd,
+		Env:          input.Env,
 	}
 
 	resp, err := client.Create(context.Background(), req)

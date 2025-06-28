@@ -95,7 +95,7 @@ func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Con
 
 	data := &shared.ContainerModelData{
 		Id:        uint32(id64),
-		CreatedAt: state.Created,
+		StartedAt: state.Created,
 	}
 	var subnetworkId *uint32
 	for _, label := range container.Config().Labels {
@@ -135,6 +135,15 @@ func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Con
 			data.Spec = spec
 			continue
 		}
+
+		if after, found := strings.CutPrefix(label, "createdAt="); found {
+			createdAt, err := time.Parse(time.RFC3339, after)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse createdAt: %w", err)
+			}
+			data.CreatedAt = createdAt
+			continue
+		}
 	}
 
 	if data.Image == "" {
@@ -152,6 +161,10 @@ func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Con
 
 	if data.Spec == nil {
 		return nil, fmt.Errorf("failed to locate metadata about the container's OCI specification")
+	}
+
+	if data.CreatedAt.IsZero() {
+		return nil, fmt.Errorf("failed to locate metadata about the container's creation time")
 	}
 
 	return &wrappedContainer{
@@ -234,6 +247,7 @@ func (r *libcontainerRepository) Create(creationModel *shared.ContainerCreationM
 	config.Labels = append(config.Labels, fmt.Sprintf("subnetworkId=%d", creationModel.SubnetworkId))
 	config.Labels = append(config.Labels, fmt.Sprintf("ip=%s", creationModel.Ip.String()))
 	config.Labels = append(config.Labels, fmt.Sprintf("spec=%s", serializedSpec))
+	config.Labels = append(config.Labels, fmt.Sprintf("createdAt=%s", creationModel.CreatedAt.Format(time.RFC3339)))
 
 	container, err := r.createContainer(creationModel.Id, config, creationModel.Spec.Process)
 	if err != nil {

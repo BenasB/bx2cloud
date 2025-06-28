@@ -35,6 +35,7 @@ message Container {
     string status = 4;
     string image = 5;
     google.protobuf.Timestamp createdAt = 6;
+    google.protobuf.Timestamp startedAt = 7;
 }
 
 message ContainerExecRequest {
