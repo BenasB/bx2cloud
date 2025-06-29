@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
@@ -96,8 +95,6 @@ func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 					a := newSubnetwork.Address & minMask
 					b := subnetwork.Address & minMask
 					if a == b {
-						log.Print(a)
-						log.Print(b)
 						return fmt.Errorf("new subnetwork would overlap with subnetwork %d", subnetwork.Id)
 					}
 				}
