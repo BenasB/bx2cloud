@@ -36,6 +36,7 @@ message Container {
     string image = 5;
     google.protobuf.Timestamp createdAt = 6;
     google.protobuf.Timestamp startedAt = 7;
+    uint32 subnetwork_id = 8;
 }
 
 message ContainerExecRequest {

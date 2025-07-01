@@ -35,5 +35,6 @@ func createGrpcClients() *provider.Bx2cloudClients {
 	return &provider.Bx2cloudClients{
 		Network:    pb.NewNetworkServiceClient(conn),
 		Subnetwork: pb.NewSubnetworkServiceClient(conn),
+		Container:  pb.NewContainerServiceClient(conn),
 	}
 }

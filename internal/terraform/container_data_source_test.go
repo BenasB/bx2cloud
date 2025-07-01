@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-func TestAccSubnetworkDataSource(t *testing.T) {
+func TestAccContainerDataSource(t *testing.T) {
 	networkCreateReq := &pb.NetworkCreationRequest{
 		InternetAccess: true,
 	}
@@ -22,18 +22,39 @@ func TestAccSubnetworkDataSource(t *testing.T) {
 
 	subnetworkCreateReq := &pb.SubnetworkCreationRequest{
 		NetworkId:    network.Id,
-		Address:      binary.BigEndian.Uint32([]byte{192, 168, 10, 8}),
-		PrefixLength: 30,
+		Address:      binary.BigEndian.Uint32([]byte{192, 168, 42, 0}),
+		PrefixLength: 24,
 	}
+
 	subnetwork, err := grpcClients.Subnetwork.Create(t.Context(), subnetworkCreateReq)
 	if err != nil {
 		t.Fatalf("Failed to create a subnetwork before running the terraform test: %v", err)
 	}
 
+	containerCreateReq := &pb.ContainerCreationRequest{
+		SubnetworkId: subnetwork.Id,
+		Image:        "ubuntu:24.04",
+		Entrypoint:   []string{"/bin/sh"},
+		Cmd:          []string{"sleep", "infinity"},
+	}
+	container, err := grpcClients.Container.Create(t.Context(), containerCreateReq)
+	if err != nil {
+		t.Fatalf("Failed to create a container before running the terraform test: %v", err)
+	}
+
 	t.Cleanup(func() {
+		containerDeleteReq := &pb.ContainerIdentificationRequest{
+			Id: container.Id,
+		}
+		_, err = grpcClients.Container.Delete(context.Background(), containerDeleteReq)
+		if err != nil {
+			t.Fatalf("Failed to delete container '%d' after running the terraform test: %v", container.Id, err)
+		}
+
 		subnetworkDeleteReq := &pb.SubnetworkIdentificationRequest{
 			Id: subnetwork.Id,
 		}
+
 		_, err = grpcClients.Subnetwork.Delete(context.Background(), subnetworkDeleteReq)
 		if err != nil {
 			t.Fatalf("Failed to delete subnetwork '%d' after running the terraform test: %v", subnetwork.Id, err)
@@ -54,11 +75,13 @@ func TestAccSubnetworkDataSource(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(providerConfig+`
-data "bx2cloud_subnetwork" "test" {
+data "bx2cloud_container" "test" {
   id = %d
-}`, subnetwork.Id),
+}`, container.Id),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.bx2cloud_subnetwork.test", "cidr", "192.168.10.8/30"),
+					resource.TestCheckResourceAttr("data.bx2cloud_container.test", "image", "ubuntu:24.04"),
+					resource.TestCheckResourceAttrSet("data.bx2cloud_container.test", "status"),
+					resource.TestCheckResourceAttrSet("data.bx2cloud_container.test", "ip"),
 				),
 			},
 		},

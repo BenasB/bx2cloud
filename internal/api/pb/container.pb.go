@@ -152,6 +152,7 @@ type Container struct {
 	Image         string                 `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=startedAt,proto3" json:"startedAt,omitempty"`
+	SubnetworkId  uint32                 `protobuf:"varint,8,opt,name=subnetwork_id,json=subnetworkId,proto3" json:"subnetwork_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -233,6 +234,13 @@ func (x *Container) GetStartedAt() *timestamppb.Timestamp {
 		return x.StartedAt
 	}
 	return nil
+}
+
+func (x *Container) GetSubnetworkId() uint32 {
+	if x != nil {
+		return x.SubnetworkId
+	}
+	return 0
 }
 
 type ContainerExecRequest struct {
@@ -489,7 +497,7 @@ const file_container_proto_rawDesc = "" +
 	"entrypoint\x18\x03 \x03(\tR\n" +
 	"entrypoint\x12\x10\n" +
 	"\x03cmd\x18\x04 \x03(\tR\x03cmd\x12\x10\n" +
-	"\x03env\x18\x05 \x03(\tR\x03env\"\xfc\x01\n" +
+	"\x03env\x18\x05 \x03(\tR\x03env\"\xa1\x02\n" +
 	"\tContainer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\aR\aaddress\x12#\n" +
@@ -497,7 +505,8 @@ const file_container_proto_rawDesc = "" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12\x14\n" +
 	"\x05image\x18\x05 \x01(\tR\x05image\x128\n" +
 	"\tcreatedAt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x128\n" +
-	"\tstartedAt\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\"\x8f\x01\n" +
+	"\tstartedAt\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12#\n" +
+	"\rsubnetwork_id\x18\b \x01(\rR\fsubnetworkId\"\x8f\x01\n" +
 	"\x14ContainerExecRequest\x12V\n" +
 	"\x0einitialization\x18\x01 \x01(\v2,.bx2cloud.ContainerExecInitializationRequestH\x00R\x0einitialization\x12\x16\n" +
 	"\x05stdin\x18\x02 \x01(\fH\x00R\x05stdinB\a\n" +

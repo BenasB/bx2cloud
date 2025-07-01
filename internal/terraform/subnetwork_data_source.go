@@ -66,7 +66,7 @@ func (d *subnetworkDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed:    true,
 			},
 			"cidr": schema.StringAttribute{
-				Description: "Specifies the subnetwork's address and mask prefix length in CIDR notation. for example 10.0.8.0/24, 192.168.10.8/30.",
+				Description: "Specifies the subnetwork's address and mask prefix length in CIDR notation. For example `10.0.8.0/24`, `192.168.10.8/30`.",
 				Computed:    true,
 			},
 			"created_at": schema.StringAttribute{

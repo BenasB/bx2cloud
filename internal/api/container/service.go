@@ -279,5 +279,6 @@ func mapModelToDto(container shared.ContainerModel) (*pb.Container, error) {
 		Image:        data.Image,
 		StartedAt:    timestamppb.New(data.StartedAt),
 		CreatedAt:    timestamppb.New(data.CreatedAt),
+		SubnetworkId: data.SubnetworkId,
 	}, nil
 }

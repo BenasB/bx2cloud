@@ -19,10 +19,10 @@ type bx2cloudProviderModel struct {
 	Host types.String `tfsdk:"host"`
 }
 
-// TODO: (This PR) Add container support for the terraform provider
 type Bx2cloudClients struct {
 	Network    pb.NetworkServiceClient
 	Subnetwork pb.SubnetworkServiceClient
+	Container  pb.ContainerServiceClient
 }
 
 var _ provider.Provider = &bx2cloudProvider{}
@@ -115,6 +115,7 @@ func (p *bx2cloudProvider) Configure(ctx context.Context, req provider.Configure
 	clients := &Bx2cloudClients{
 		Network:    pb.NewNetworkServiceClient(conn),
 		Subnetwork: pb.NewSubnetworkServiceClient(conn),
+		Container:  pb.NewContainerServiceClient(conn),
 	}
 
 	resp.DataSourceData = clients
@@ -125,6 +126,7 @@ func (p *bx2cloudProvider) DataSources(ctx context.Context) []func() datasource.
 	return []func() datasource.DataSource{
 		NewNetworkDataSource,
 		NewSubnetworkDataSource,
+		NewContainerDataSource,
 	}
 }
 
