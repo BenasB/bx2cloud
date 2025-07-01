@@ -117,26 +117,33 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
 	}
 
-	if len(req.Entrypoint) > 0 {
-		imgMetadata.Image.Config.Entrypoint = req.Entrypoint
+	entrypointCust := &shared.ContainerProcessCustomization{
+		Entrypoint: req.Entrypoint,
+		Cmd:        req.Cmd,
+		Env:        req.Env,
 	}
 
-	if len(req.Cmd) > 0 {
-		imgMetadata.Image.Config.Cmd = req.Cmd
+	if len(entrypointCust.Entrypoint) > 0 {
+		imgMetadata.Image.Config.Entrypoint = entrypointCust.Entrypoint
 	}
 
-	if len(req.Env) > 0 {
-		imgMetadata.Image.Config.Env = append(imgMetadata.Image.Config.Env, req.Env...)
+	if len(entrypointCust.Cmd) > 0 {
+		imgMetadata.Image.Config.Cmd = entrypointCust.Cmd
+	}
+
+	if len(entrypointCust.Env) > 0 {
+		imgMetadata.Image.Config.Env = append(imgMetadata.Image.Config.Env, entrypointCust.Env...)
 	}
 
 	spec := imageSpecToRuntimeSpec(id, rootFsDir, &imgMetadata.Image.Config)
 	creationModel := &shared.ContainerCreationModel{
-		Id:           id,
-		Ip:           ip,
-		SubnetworkId: subnetwork.Id,
-		Image:        req.Image,
-		Spec:         spec,
-		CreatedAt:    time.Now(),
+		Id:                      id,
+		Ip:                      ip,
+		SubnetworkId:            subnetwork.Id,
+		Image:                   req.Image,
+		Spec:                    spec,
+		EntrypointCustomization: entrypointCust,
+		CreatedAt:               time.Now(),
 	}
 
 	container, err := s.repository.Create(creationModel)
@@ -214,12 +221,13 @@ func (s *service) Start(ctx context.Context, req *pb.ContainerIdentificationRequ
 	}
 
 	creationModel := &shared.ContainerCreationModel{
-		Id:           data.Id,
-		Ip:           data.Ip,
-		SubnetworkId: subnetwork.Id,
-		Image:        data.Image,
-		Spec:         data.Spec,
-		CreatedAt:    data.CreatedAt,
+		Id:                      data.Id,
+		Ip:                      data.Ip,
+		SubnetworkId:            subnetwork.Id,
+		Image:                   data.Image,
+		Spec:                    data.Spec,
+		EntrypointCustomization: data.EntrypointCustomization,
+		CreatedAt:               data.CreatedAt,
 	}
 
 	newContainer, err := s.repository.Create(creationModel)
@@ -280,5 +288,8 @@ func mapModelToDto(container shared.ContainerModel) (*pb.Container, error) {
 		StartedAt:    timestamppb.New(data.StartedAt),
 		CreatedAt:    timestamppb.New(data.CreatedAt),
 		SubnetworkId: data.SubnetworkId,
+		Entrypoint:   data.EntrypointCustomization.Entrypoint,
+		Cmd:          data.EntrypointCustomization.Cmd,
+		Env:          data.EntrypointCustomization.Env,
 	}, nil
 }

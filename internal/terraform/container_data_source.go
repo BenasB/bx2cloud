@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
@@ -32,6 +33,9 @@ type containerDataSourceModel struct {
 	Ip           types.String `tfsdk:"ip"`
 	Image        types.String `tfsdk:"image"`
 	Status       types.String `tfsdk:"status"`
+	Entrypoint   types.List   `tfsdk:"entrypoint"`
+	Cmd          types.List   `tfsdk:"cmd"`
+	Env          types.Map    `tfsdk:"env"`
 	StartedAt    types.String `tfsdk:"started_at"`
 	CreatedAt    types.String `tfsdk:"created_at"`
 }
@@ -73,11 +77,26 @@ func (d *containerDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 				Computed:    true,
 			},
 			"image": schema.StringAttribute{
-				Description: "The OCI compliant container image name.",
+				Description: "The container image name from an OCI compliant registry.",
 				Computed:    true,
 			},
 			"status": schema.StringAttribute{
 				Description: "The status of the container: `running` or `stopped`.",
+				Computed:    true,
+			},
+			"entrypoint": schema.ListAttribute{
+				ElementType: types.StringType,
+				Description: "Overides the default executable from the original image. Corresponds to Dockerfile's `ENTRYPOINT` instruction.",
+				Computed:    true,
+			},
+			"cmd": schema.ListAttribute{
+				ElementType: types.StringType,
+				Description: "Overides the default commands from the original image. Corresponds to Dockerfile's `CMD` instruction.",
+				Computed:    true,
+			},
+			"env": schema.MapAttribute{
+				ElementType: types.StringType,
+				Description: "Appends extra environment variables to the default environment variables from the original image. Corresponds to Dockerfile's `ENV` instruction.",
 				Computed:    true,
 			},
 			"started_at": schema.StringAttribute{
@@ -136,6 +155,36 @@ func (d *containerDataSource) Read(ctx context.Context, req datasource.ReadReque
 	state.Status = types.StringValue(container.Status)
 	state.StartedAt = types.StringValue(container.StartedAt.AsTime().Format(time.RFC3339))
 	state.CreatedAt = types.StringValue(container.CreatedAt.AsTime().Format(time.RFC3339))
+
+	state.Entrypoint, diags = types.ListValueFrom(ctx, types.StringType, container.Entrypoint)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	state.Cmd, diags = types.ListValueFrom(ctx, types.StringType, container.Cmd)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	responseEnvMap := make(map[string]string, len(container.Env))
+	for _, v := range container.Env {
+		parts := strings.SplitN(v, "=", 2)
+		if len(parts) != 2 {
+			resp.Diagnostics.AddError(
+				"Error parsing container creation response",
+				"Could not decode environment variables into a map",
+			)
+			return
+		}
+		responseEnvMap[parts[0]] = parts[1]
+	}
+	state.Env, diags = types.MapValueFrom(ctx, types.StringType, responseEnvMap)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)

@@ -34,8 +34,8 @@ func TestAccContainerDataSource(t *testing.T) {
 	containerCreateReq := &pb.ContainerCreationRequest{
 		SubnetworkId: subnetwork.Id,
 		Image:        "ubuntu:24.04",
-		Entrypoint:   []string{"/bin/sh"},
-		Cmd:          []string{"sleep", "infinity"},
+		Entrypoint:   []string{"/bin/sh", "-c"},
+		Cmd:          []string{"sleep infinity"},
 	}
 	container, err := grpcClients.Container.Create(t.Context(), containerCreateReq)
 	if err != nil {
@@ -80,8 +80,11 @@ data "bx2cloud_container" "test" {
 }`, container.Id),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.bx2cloud_container.test", "image", "ubuntu:24.04"),
-					resource.TestCheckResourceAttrSet("data.bx2cloud_container.test", "status"),
+					resource.TestCheckResourceAttr("data.bx2cloud_container.test", "status", "running"),
 					resource.TestCheckResourceAttrSet("data.bx2cloud_container.test", "ip"),
+					resource.TestCheckResourceAttr("data.bx2cloud_container.test", "entrypoint.#", fmt.Sprintf("%d", len(containerCreateReq.Entrypoint))),
+					resource.TestCheckResourceAttr("data.bx2cloud_container.test", "cmd.#", fmt.Sprintf("%d", len(containerCreateReq.Cmd))),
+					resource.TestCheckResourceAttr("data.bx2cloud_container.test", "env.%", fmt.Sprintf("%d", len(containerCreateReq.Env))),
 				),
 			},
 		},

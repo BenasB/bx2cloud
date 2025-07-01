@@ -94,8 +94,9 @@ func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Con
 	}
 
 	data := &shared.ContainerModelData{
-		Id:        uint32(id64),
-		StartedAt: state.Created,
+		Id:                      uint32(id64),
+		StartedAt:               state.Created,
+		EntrypointCustomization: &shared.ContainerProcessCustomization{},
 	}
 	var subnetworkId *uint32
 	for _, label := range container.Config().Labels {
@@ -133,6 +134,13 @@ func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Con
 				return nil, fmt.Errorf("failed to unmarshal OCI specification: %w", err)
 			}
 			data.Spec = spec
+			continue
+		}
+
+		if after, found := strings.CutPrefix(label, "entrypointCustomization="); found {
+			if err := json.Unmarshal([]byte(after), data.EntrypointCustomization); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal the entrypoint customization: %w", err)
+			}
 			continue
 		}
 
@@ -243,10 +251,16 @@ func (r *libcontainerRepository) Create(creationModel *shared.ContainerCreationM
 		return nil, fmt.Errorf("failed to serialize the OCI specification: %w", err)
 	}
 
+	serializedEntryCustomization, err := json.Marshal(creationModel.EntrypointCustomization)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize the entrypoint customization: %w", err)
+	}
+
 	config.Labels = append(config.Labels, fmt.Sprintf("image=%s", creationModel.Image))
 	config.Labels = append(config.Labels, fmt.Sprintf("subnetworkId=%d", creationModel.SubnetworkId))
 	config.Labels = append(config.Labels, fmt.Sprintf("ip=%s", creationModel.Ip.String()))
 	config.Labels = append(config.Labels, fmt.Sprintf("spec=%s", serializedSpec))
+	config.Labels = append(config.Labels, fmt.Sprintf("entrypointCustomization=%s", serializedEntryCustomization))
 	config.Labels = append(config.Labels, fmt.Sprintf("createdAt=%s", creationModel.CreatedAt.Format(time.RFC3339)))
 
 	container, err := r.createContainer(creationModel.Id, config, creationModel.Spec.Process)

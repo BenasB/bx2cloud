@@ -38,7 +38,7 @@ func TestAccSubnetworkResource(t *testing.T) {
 			t.Fatalf("Failed to delete network '%d' after running the terraform test: %v", networkOne.Id, err)
 		}
 		networkTwoDeleteReq := &pb.NetworkIdentificationRequest{
-			Id: networkOne.Id,
+			Id: networkTwo.Id,
 		}
 		_, err = grpcClients.Network.Delete(context.Background(), networkTwoDeleteReq)
 		if err != nil {

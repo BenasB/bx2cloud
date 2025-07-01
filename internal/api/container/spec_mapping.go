@@ -36,16 +36,9 @@ func imageSpecToRuntimeSpec(containerId uint32, rootFsDir string, img *imgspecs.
 		}
 	}
 
-	var args []string
-	switch {
-	case len(img.Entrypoint) > 0:
-		args = append([]string{}, img.Entrypoint...)
-		args = append(args, img.Cmd...)
-	case len(img.Cmd) > 0:
-		args = []string{"/bin/sh", "-c", strings.Join(img.Cmd, " ")}
-	default:
-		args = []string{"/bin/sh"}
-	}
+	args := make([]string, 0, len(img.Entrypoint)+len(img.Cmd))
+	args = append([]string{}, img.Entrypoint...)
+	args = append(args, img.Cmd...)
 
 	env := make([]string, len(img.Env))
 	copy(env, img.Env)

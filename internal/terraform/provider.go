@@ -134,5 +134,6 @@ func (p *bx2cloudProvider) Resources(ctx context.Context) []func() resource.Reso
 	return []func() resource.Resource{
 		NewNetworkResource,
 		NewSubnetworkResource,
+		NewContainerResource,
 	}
 }

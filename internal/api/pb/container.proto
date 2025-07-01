@@ -37,6 +37,9 @@ message Container {
     google.protobuf.Timestamp createdAt = 6;
     google.protobuf.Timestamp startedAt = 7;
     uint32 subnetwork_id = 8;
+    repeated string entrypoint = 9;
+    repeated string cmd = 10;
+    repeated string env = 11;
 }
 
 message ContainerExecRequest {

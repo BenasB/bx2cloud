@@ -20,13 +20,20 @@ const (
 )
 
 type ContainerModelData struct {
-	Id           uint32
-	Ip           *net.IPNet
-	SubnetworkId uint32
-	Image        string
-	CreatedAt    time.Time
-	StartedAt    time.Time
-	Spec         *runspecs.Spec
+	Id                      uint32
+	Ip                      *net.IPNet
+	SubnetworkId            uint32
+	Image                   string
+	CreatedAt               time.Time
+	StartedAt               time.Time
+	EntrypointCustomization *ContainerProcessCustomization
+	Spec                    *runspecs.Spec
+}
+
+type ContainerProcessCustomization struct {
+	Entrypoint []string
+	Cmd        []string
+	Env        []string
 }
 
 type ContainerModel interface {
@@ -45,10 +52,11 @@ type ContainerProcess interface {
 }
 
 type ContainerCreationModel struct {
-	Id           uint32
-	Ip           *net.IPNet
-	SubnetworkId uint32
-	Image        string
-	CreatedAt    time.Time
-	Spec         *runspecs.Spec
+	Id                      uint32
+	Ip                      *net.IPNet
+	SubnetworkId            uint32
+	Image                   string
+	CreatedAt               time.Time
+	EntrypointCustomization *ContainerProcessCustomization
+	Spec                    *runspecs.Spec
 }
