@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/network"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
@@ -20,23 +21,23 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var testNetworks = []*shared.NetworkModel{
-	&shared.NetworkModel{
+var testNetworks = []*interfaces.NetworkModel{
+	&interfaces.NetworkModel{
 		Id:             5123,
 		InternetAccess: false,
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Hour)),
 	},
 }
 
-var testSubnetworks = []*shared.SubnetworkModel{
-	&shared.SubnetworkModel{
+var testSubnetworks = []*interfaces.SubnetworkModel{
+	&interfaces.SubnetworkModel{
 		Id:           1,
 		NetworkId:    testNetworks[0].Id,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 0, 0}),
 		PrefixLength: 24,
 		CreatedAt:    timestamppb.New(time.Now().Add(-time.Hour)),
 	},
-	&shared.SubnetworkModel{
+	&interfaces.SubnetworkModel{
 		Id:           2,
 		NetworkId:    testNetworks[0].Id,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 1, 0}),
@@ -113,14 +114,14 @@ func TestSubnetwork_Create_Overlap(t *testing.T) {
 
 	for _, tt := range tests {
 		existingPrefixLength, _ := tt.existing.Mask.Size()
-		existingSubnetwork := &shared.SubnetworkModel{
+		existingSubnetwork := &interfaces.SubnetworkModel{
 			Id:           1,
 			NetworkId:    testNetworks[0].Id,
 			Address:      binary.BigEndian.Uint32(tt.existing.IP),
 			PrefixLength: uint32(existingPrefixLength),
 			CreatedAt:    timestamppb.New(time.Now().Add(-time.Hour)),
 		}
-		repository := subnetwork.NewMemoryRepository([]*shared.SubnetworkModel{existingSubnetwork})
+		repository := subnetwork.NewMemoryRepository([]*interfaces.SubnetworkModel{existingSubnetwork})
 		networkRepository := network.NewMemoryRepository(testNetworks)
 		ipamRepository := ipam.NewMemoryRepository()
 		service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
@@ -144,14 +145,14 @@ func TestSubnetwork_Create_Overlap(t *testing.T) {
 }
 
 func TestSubnetwork_Create_NonOverlap(t *testing.T) {
-	existingSubnetwork := &shared.SubnetworkModel{
+	existingSubnetwork := &interfaces.SubnetworkModel{
 		Id:           1,
 		NetworkId:    testNetworks[0].Id,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 42, 0}),
 		PrefixLength: 24,
 		CreatedAt:    timestamppb.New(time.Now().Add(-time.Hour)),
 	}
-	repository := subnetwork.NewMemoryRepository([]*shared.SubnetworkModel{existingSubnetwork})
+	repository := subnetwork.NewMemoryRepository([]*interfaces.SubnetworkModel{existingSubnetwork})
 	networkRepository := network.NewMemoryRepository(testNetworks)
 	ipamRepository := ipam.NewMemoryRepository()
 	service := subnetwork.NewService(repository, networkRepository, mockConfigurator, ipamRepository)
@@ -194,7 +195,7 @@ func TestSubnetwork_Delete_StillAllocated(t *testing.T) {
 		t.Error(err)
 	}
 	ipamRepository := ipam.NewMemoryRepository()
-	if _, err := ipamRepository.Allocate(sn, shared.IPAM_CONTAINER); err != nil {
+	if _, err := ipamRepository.Allocate(sn, interfaces.IPAM_CONTAINER); err != nil {
 		t.Error(err)
 	}
 
@@ -231,7 +232,7 @@ func TestSubnetwork_Get(t *testing.T) {
 }
 
 func TestSubnetwork_List(t *testing.T) {
-	stream := shared.NewMockStream[*shared.SubnetworkModel](t.Context())
+	stream := shared.NewMockStream[*interfaces.SubnetworkModel](t.Context())
 
 	repository := subnetwork.NewMemoryRepository(testSubnetworks)
 	networkRepository := network.NewMemoryRepository(nil)

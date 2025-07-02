@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
-	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type service struct {
 	pb.UnimplementedNetworkServiceServer
-	repository           shared.NetworkRepository
-	subnetworkRepository shared.SubnetworkRepository
+	repository           interfaces.NetworkRepository
+	subnetworkRepository interfaces.SubnetworkRepository
 	configurator         configurator
 }
 
-func NewService(repository shared.NetworkRepository, subnetworkRepository shared.SubnetworkRepository, configurator configurator) *service {
+func NewService(repository interfaces.NetworkRepository, subnetworkRepository interfaces.SubnetworkRepository, configurator configurator) *service {
 	return &service{
 		repository:           repository,
 		subnetworkRepository: subnetworkRepository,
@@ -56,7 +56,7 @@ func (s *service) Delete(ctx context.Context, req *pb.NetworkIdentificationReque
 }
 
 func (s *service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*pb.Network, error) {
-	newNetwork := &shared.NetworkModel{
+	newNetwork := &interfaces.NetworkModel{
 		InternetAccess: req.InternetAccess,
 	}
 
@@ -74,7 +74,7 @@ func (s *service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*
 }
 
 func (s *service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb.Network, error) {
-	network, err := s.repository.Update(req.Identification.Id, func(sn *shared.NetworkModel) {
+	network, err := s.repository.Update(req.Identification.Id, func(sn *interfaces.NetworkModel) {
 		sn.InternetAccess = req.Update.InternetAccess
 	})
 

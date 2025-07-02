@@ -1,10 +1,8 @@
 package container
 
-import (
-	"github.com/BenasB/bx2cloud/internal/api/shared"
-)
+import "github.com/BenasB/bx2cloud/internal/api/interfaces"
 
 type configurator interface {
-	Configure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
-	Unconfigure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error
+	Configure(model interfaces.ContainerModel, subnetworkModel *interfaces.SubnetworkModel) error
+	Unconfigure(model interfaces.ContainerModel, subnetworkModel *interfaces.SubnetworkModel) error
 }

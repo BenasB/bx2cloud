@@ -5,19 +5,19 @@ import (
 	"net"
 	"testing"
 
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork/ipam"
 )
 
 func TestIpam_Memory_Allocate(t *testing.T) {
 	repository := ipam.NewMemoryRepository()
-	subnetwork := &shared.SubnetworkModel{
+	subnetwork := &interfaces.SubnetworkModel{
 		Id:           1,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 42, 0}),
 		PrefixLength: 24,
 	}
 
-	ip, err := repository.Allocate(subnetwork, shared.IPAM_CONTAINER)
+	ip, err := repository.Allocate(subnetwork, interfaces.IPAM_CONTAINER)
 	if err != nil {
 		t.Error(err)
 	}
@@ -29,13 +29,13 @@ func TestIpam_Memory_Allocate(t *testing.T) {
 
 func TestIpam_Memory_Dogfood(t *testing.T) {
 	repository := ipam.NewMemoryRepository()
-	subnetwork := &shared.SubnetworkModel{
+	subnetwork := &interfaces.SubnetworkModel{
 		Id:           1,
 		Address:      binary.BigEndian.Uint32([]byte{10, 0, 42, 0}),
 		PrefixLength: 24,
 	}
 
-	ip, err := repository.Allocate(subnetwork, shared.IPAM_CONTAINER)
+	ip, err := repository.Allocate(subnetwork, interfaces.IPAM_CONTAINER)
 	if err != nil {
 		t.Error(err)
 	}

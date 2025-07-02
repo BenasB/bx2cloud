@@ -8,8 +8,8 @@ import (
 
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
 	"github.com/BenasB/bx2cloud/internal/api/id"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
-	"github.com/BenasB/bx2cloud/internal/api/shared"
 	runspecs "github.com/opencontainers/runtime-spec/specs-go"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -18,19 +18,19 @@ import (
 
 type service struct {
 	pb.UnimplementedContainerServiceServer
-	repository           shared.ContainerRepository
-	subnetworkRepository shared.SubnetworkRepository
+	repository           interfaces.ContainerRepository
+	subnetworkRepository interfaces.SubnetworkRepository
 	configurator         configurator
 	imagePuller          images.Puller
-	ipamRepository       shared.IpamRepository
+	ipamRepository       interfaces.IpamRepository
 }
 
 func NewService(
-	containerRepository shared.ContainerRepository,
-	subnetworkRepository shared.SubnetworkRepository,
+	containerRepository interfaces.ContainerRepository,
+	subnetworkRepository interfaces.SubnetworkRepository,
 	configurator configurator,
 	imagePuller images.Puller,
-	ipamRepository shared.IpamRepository,
+	ipamRepository interfaces.IpamRepository,
 ) *service {
 	return &service{
 		repository:           containerRepository,
@@ -112,12 +112,12 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		return nil, err
 	}
 
-	ip, err := s.ipamRepository.Allocate(subnetwork, shared.IPAM_CONTAINER)
+	ip, err := s.ipamRepository.Allocate(subnetwork, interfaces.IPAM_CONTAINER)
 	if err != nil {
 		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
 	}
 
-	entrypointCust := &shared.ContainerProcessCustomization{
+	entrypointCust := &interfaces.ContainerProcessCustomization{
 		Entrypoint: req.Entrypoint,
 		Cmd:        req.Cmd,
 		Env:        req.Env,
@@ -136,7 +136,7 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 	}
 
 	spec := imageSpecToRuntimeSpec(id, rootFsDir, &imgMetadata.Image.Config)
-	creationModel := &shared.ContainerCreationModel{
+	creationModel := &interfaces.ContainerCreationModel{
 		Id:                      id,
 		Ip:                      ip,
 		SubnetworkId:            subnetwork.Id,
@@ -220,7 +220,7 @@ func (s *service) Start(ctx context.Context, req *pb.ContainerIdentificationRequ
 		return nil, err
 	}
 
-	creationModel := &shared.ContainerCreationModel{
+	creationModel := &interfaces.ContainerCreationModel{
 		Id:                      data.Id,
 		Ip:                      data.Ip,
 		SubnetworkId:            subnetwork.Id,
@@ -268,7 +268,7 @@ func (s *service) Stop(ctx context.Context, req *pb.ContainerIdentificationReque
 	return mapModelToDto(container)
 }
 
-func mapModelToDto(container shared.ContainerModel) (*pb.Container, error) {
+func mapModelToDto(container interfaces.ContainerModel) (*pb.Container, error) {
 	state, err := container.GetState()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve the container's state: %w", err)

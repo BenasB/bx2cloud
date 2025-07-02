@@ -1,12 +1,10 @@
 package network
 
-import (
-	"github.com/BenasB/bx2cloud/internal/api/shared"
-)
+import "github.com/BenasB/bx2cloud/internal/api/interfaces"
 
 type configurator interface {
-	Configure(model *shared.NetworkModel) error
-	Unconfigure(model *shared.NetworkModel) error
+	Configure(model *interfaces.NetworkModel) error
+	Unconfigure(model *interfaces.NetworkModel) error
 }
 
 var _ configurator = &mockConfigurator{}
@@ -17,10 +15,10 @@ func NewMockConfigurator() configurator {
 	return &mockConfigurator{}
 }
 
-func (m *mockConfigurator) Configure(model *shared.NetworkModel) error {
+func (m *mockConfigurator) Configure(model *interfaces.NetworkModel) error {
 	return nil
 }
 
-func (m *mockConfigurator) Unconfigure(model *shared.NetworkModel) error {
+func (m *mockConfigurator) Unconfigure(model *interfaces.NetworkModel) error {
 	return nil
 }

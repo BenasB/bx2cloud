@@ -6,25 +6,25 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
-	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type service struct {
 	pb.UnimplementedSubnetworkServiceServer
-	repository        shared.SubnetworkRepository
-	networkRepository shared.NetworkRepository
+	repository        interfaces.SubnetworkRepository
+	networkRepository interfaces.NetworkRepository
 	configurator      configurator
-	ipamRepository    shared.IpamRepository
+	ipamRepository    interfaces.IpamRepository
 }
 
 func NewService(
-	subnetworkRepository shared.SubnetworkRepository,
-	networkRepository shared.NetworkRepository,
+	subnetworkRepository interfaces.SubnetworkRepository,
+	networkRepository interfaces.NetworkRepository,
 	configurator configurator,
-	ipamRepository shared.IpamRepository,
+	ipamRepository interfaces.IpamRepository,
 ) *service {
 	return &service{
 		repository:        subnetworkRepository,
@@ -46,7 +46,7 @@ func (s *service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRe
 
 	if alloc, found := s.ipamRepository.HasAllocations(subnetwork); found {
 		switch alloc {
-		case shared.IPAM_CONTAINER:
+		case interfaces.IPAM_CONTAINER:
 			return nil, fmt.Errorf("the subnetwork still has an IP allocated for a container")
 		default:
 			return nil, fmt.Errorf("the subnetwork still has an IP allocated for a resource")
@@ -70,7 +70,7 @@ func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 		return nil, err
 	}
 
-	newSubnetwork := &shared.SubnetworkModel{
+	newSubnetwork := &interfaces.SubnetworkModel{
 		NetworkId:    req.NetworkId,
 		Address:      req.Address, // TODO: #1 AND address with network mask to make sure this stores the network IP + unit test
 		PrefixLength: req.PrefixLength,
@@ -123,7 +123,7 @@ func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 }
 
 func (s *service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*pb.Subnetwork, error) {
-	subnetwork, err := s.repository.Update(req.Identification.Id, func(sn *shared.SubnetworkModel) {
+	subnetwork, err := s.repository.Update(req.Identification.Id, func(sn *interfaces.SubnetworkModel) {
 		sn.Address = req.Update.Address
 		sn.PrefixLength = req.Update.PrefixLength
 	})

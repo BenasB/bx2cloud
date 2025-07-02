@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/id"
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	_ "github.com/opencontainers/cgroups/devices"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -23,13 +23,13 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var _ shared.ContainerRepository = &libcontainerRepository{}
+var _ interfaces.ContainerRepository = &libcontainerRepository{}
 
 type libcontainerRepository struct {
 	root string
 }
 
-func NewLibcontainerRepository() (shared.ContainerRepository, error) {
+func NewLibcontainerRepository() (interfaces.ContainerRepository, error) {
 	root := "/var/run/bx2cloud"
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func NewLibcontainerRepository() (shared.ContainerRepository, error) {
 	}, nil
 }
 
-func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Container) (shared.ContainerModel, error) {
+func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Container) (interfaces.ContainerModel, error) {
 	id64, err := strconv.ParseUint(container.ID(), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse the container's id: %w", err)
@@ -93,10 +93,10 @@ func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Con
 		return nil, fmt.Errorf("failed to retrieve the container's state: %w", err)
 	}
 
-	data := &shared.ContainerModelData{
+	data := &interfaces.ContainerModelData{
 		Id:                      uint32(id64),
 		StartedAt:               state.Created,
-		EntrypointCustomization: &shared.ContainerProcessCustomization{},
+		EntrypointCustomization: &interfaces.ContainerProcessCustomization{},
 	}
 	var subnetworkId *uint32
 	for _, label := range container.Config().Labels {
@@ -181,7 +181,7 @@ func (r *libcontainerRepository) mapToContainerModel(container *libcontainer.Con
 	}, nil
 }
 
-func (r *libcontainerRepository) Get(id uint32) (shared.ContainerModel, error) {
+func (r *libcontainerRepository) Get(id uint32) (interfaces.ContainerModel, error) {
 	container, err := libcontainer.Load(r.root, strconv.FormatInt(int64(id), 10))
 
 	if err != nil {
@@ -191,8 +191,8 @@ func (r *libcontainerRepository) Get(id uint32) (shared.ContainerModel, error) {
 	return r.mapToContainerModel(container)
 }
 
-func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan shared.ContainerModel, <-chan error) {
-	results := make(chan shared.ContainerModel, 0)
+func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan interfaces.ContainerModel, <-chan error) {
+	results := make(chan interfaces.ContainerModel, 0)
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -234,7 +234,7 @@ func (r *libcontainerRepository) GetAll(ctx context.Context) (<-chan shared.Cont
 	return results, errChan
 }
 
-func (r *libcontainerRepository) Create(creationModel *shared.ContainerCreationModel) (shared.ContainerModel, error) {
+func (r *libcontainerRepository) Create(creationModel *interfaces.ContainerCreationModel) (interfaces.ContainerModel, error) {
 	config, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
 		CgroupName:       fmt.Sprintf("bx2cloud-container-%d", creationModel.Id),
 		UseSystemdCgroup: false,
@@ -304,7 +304,7 @@ func (r *libcontainerRepository) createContainer(id uint32, config *configs.Conf
 	return container, nil
 }
 
-func (r *libcontainerRepository) Delete(id uint32) (shared.ContainerModel, error) {
+func (r *libcontainerRepository) Delete(id uint32) (interfaces.ContainerModel, error) {
 	container, err := libcontainer.Load(r.root, strconv.FormatInt(int64(id), 10))
 	if err != nil {
 		return nil, err
@@ -323,11 +323,11 @@ type signalable interface {
 
 // Wraps the libcontainer.Container implementation to provide a more generic interface used in the contract of the repository
 type wrappedContainer struct {
-	data      *shared.ContainerModelData
+	data      *interfaces.ContainerModelData
 	container *libcontainer.Container
 }
 
-func (w *wrappedContainer) GetData() *shared.ContainerModelData {
+func (w *wrappedContainer) GetData() *interfaces.ContainerModelData {
 	return w.data
 }
 
@@ -339,7 +339,7 @@ func (w *wrappedContainer) Exec() error {
 	return w.container.Exec()
 }
 
-func (w *wrappedContainer) StartAdditionalProcess(spec *runspecs.Process) (shared.ContainerProcess, error) {
+func (w *wrappedContainer) StartAdditionalProcess(spec *runspecs.Process) (interfaces.ContainerProcess, error) {
 	status, err := w.container.Status()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve the container's status: %w", err)

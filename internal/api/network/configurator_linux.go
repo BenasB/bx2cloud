@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -67,7 +67,7 @@ func NewNamespaceConfigurator() (*namespaceConfigurator, error) {
 	}, nil
 }
 
-func (n *namespaceConfigurator) Configure(model *shared.NetworkModel) error {
+func (n *namespaceConfigurator) Configure(model *interfaces.NetworkModel) error {
 	nsName := n.GetNetworkNamespaceName(model.Id)
 
 	runtime.LockOSThread()
@@ -124,7 +124,7 @@ func (n *namespaceConfigurator) Configure(model *shared.NetworkModel) error {
 	return nil
 }
 
-func (n *namespaceConfigurator) Unconfigure(model *shared.NetworkModel) error {
+func (n *namespaceConfigurator) Unconfigure(model *interfaces.NetworkModel) error {
 	nsName := n.GetNetworkNamespaceName(model.Id)
 
 	runtime.LockOSThread()
@@ -159,7 +159,7 @@ func (n *namespaceConfigurator) Unconfigure(model *shared.NetworkModel) error {
 	return nil
 }
 
-func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
+func (n *namespaceConfigurator) configureInternetAccess(model *interfaces.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
 	rootVethName := n.getRootVethName(model)
 	nsVethName := n.getNsVethName(model)
 
@@ -307,7 +307,7 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	return nil
 }
 
-func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
+func (n *namespaceConfigurator) unconfigureInternetAccess(model *interfaces.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
 	if ns.IsOpen() {
 		if err := netns.Set(ns); err != nil {
 			return fmt.Errorf("failed to switch to the network's namespace: %w", err)
@@ -391,15 +391,15 @@ func (n *namespaceConfigurator) GetNetworkNamespaceName(id uint32) string {
 	return fmt.Sprintf("bx2cloud-router-%d", id)
 }
 
-func (n *namespaceConfigurator) getRootVethName(model *shared.NetworkModel) string {
+func (n *namespaceConfigurator) getRootVethName(model *interfaces.NetworkModel) string {
 	return fmt.Sprintf("bx2-r-%d", model.Id)
 }
 
-func (n *namespaceConfigurator) getNsVethName(model *shared.NetworkModel) string {
+func (n *namespaceConfigurator) getNsVethName(model *interfaces.NetworkModel) string {
 	return fmt.Sprintf("bx2-r-%d-ns", model.Id)
 }
 
-func (n *namespaceConfigurator) getRootVethAddr(model *shared.NetworkModel) *netlink.Addr {
+func (n *namespaceConfigurator) getRootVethAddr(model *interfaces.NetworkModel) *netlink.Addr {
 	const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
 	networkIp := networkIpStart + model.Id<<2
 	vethIp := networkIp + 1
@@ -412,7 +412,7 @@ func (n *namespaceConfigurator) getRootVethAddr(model *shared.NetworkModel) *net
 	}
 }
 
-func (n *namespaceConfigurator) getNsVethAddr(model *shared.NetworkModel) *netlink.Addr {
+func (n *namespaceConfigurator) getNsVethAddr(model *interfaces.NetworkModel) *netlink.Addr {
 	const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
 	networkIp := networkIpStart + model.Id<<2
 	vethIp := networkIp + 2

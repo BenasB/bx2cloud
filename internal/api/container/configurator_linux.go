@@ -6,7 +6,7 @@ import (
 	"net"
 	"runtime"
 
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -17,10 +17,10 @@ var _ configurator = &namespaceConfigurator{}
 type namespaceConfigurator struct {
 	getNetworkNamespaceName func(uint32) string
 	getBridgeName           func(uint32) string
-	ipamRepository          shared.IpamRepository
+	ipamRepository          interfaces.IpamRepository
 }
 
-func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBridgeName func(uint32) string, ipamRepository shared.IpamRepository) *namespaceConfigurator {
+func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBridgeName func(uint32) string, ipamRepository interfaces.IpamRepository) *namespaceConfigurator {
 	return &namespaceConfigurator{
 		getNetworkNamespaceName: getNetworkNamespaceName,
 		getBridgeName:           getBridgeName,
@@ -28,7 +28,7 @@ func NewNamespaceConfigurator(getNetworkNamespaceName func(uint32) string, getBr
 	}
 }
 
-func (n *namespaceConfigurator) Configure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
+func (n *namespaceConfigurator) Configure(model interfaces.ContainerModel, subnetworkModel *interfaces.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
 	if err != nil {
@@ -181,7 +181,7 @@ func (n *namespaceConfigurator) Configure(model shared.ContainerModel, subnetwor
 	return nil
 }
 
-func (n *namespaceConfigurator) Unconfigure(model shared.ContainerModel, subnetworkModel *shared.SubnetworkModel) error {
+func (n *namespaceConfigurator) Unconfigure(model interfaces.ContainerModel, subnetworkModel *interfaces.SubnetworkModel) error {
 	networkNsName := n.getNetworkNamespaceName(subnetworkModel.NetworkId)
 	networkNs, err := netns.GetFromName(networkNsName)
 	if err != nil {
@@ -225,10 +225,10 @@ func (n *namespaceConfigurator) Unconfigure(model shared.ContainerModel, subnetw
 	return nil
 }
 
-func (n *namespaceConfigurator) getNetworkVethName(modelData *shared.ContainerModelData) string {
+func (n *namespaceConfigurator) getNetworkVethName(modelData *interfaces.ContainerModelData) string {
 	return fmt.Sprintf("bx2-c-%d", modelData.Id)
 }
 
-func (n *namespaceConfigurator) getContainerVethName(modelData *shared.ContainerModelData) string {
+func (n *namespaceConfigurator) getContainerVethName(modelData *interfaces.ContainerModelData) string {
 	return fmt.Sprintf("bx2-c-%d-ns", modelData.Id)
 }

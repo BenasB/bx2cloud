@@ -5,7 +5,7 @@ import (
 	"log"
 	"runtime"
 
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
@@ -14,17 +14,17 @@ var _ configurator = &bridgeConfigurator{}
 
 type bridgeConfigurator struct {
 	getNetworkNamespaceName func(uint32) string
-	ipamRepository          shared.IpamRepository
+	ipamRepository          interfaces.IpamRepository
 }
 
-func NewBridgeConfigurator(getNetworkNamespaceName func(uint32) string, ipamRepository shared.IpamRepository) *bridgeConfigurator {
+func NewBridgeConfigurator(getNetworkNamespaceName func(uint32) string, ipamRepository interfaces.IpamRepository) *bridgeConfigurator {
 	return &bridgeConfigurator{
 		getNetworkNamespaceName: getNetworkNamespaceName,
 		ipamRepository:          ipamRepository,
 	}
 }
 
-func (b *bridgeConfigurator) Configure(model *shared.SubnetworkModel) error {
+func (b *bridgeConfigurator) Configure(model *interfaces.SubnetworkModel) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -108,7 +108,7 @@ func (b *bridgeConfigurator) Configure(model *shared.SubnetworkModel) error {
 	return nil
 }
 
-func (b *bridgeConfigurator) Unconfigure(model *shared.SubnetworkModel) error {
+func (b *bridgeConfigurator) Unconfigure(model *interfaces.SubnetworkModel) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 

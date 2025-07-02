@@ -5,25 +5,25 @@ import (
 	"math"
 	"net"
 
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 )
 
-var _ shared.IpamRepository = &memoryRepository{}
+var _ interfaces.IpamRepository = &memoryRepository{}
 
 // Caution: not thread safe
 type memoryRepository struct {
-	subnetworkAllocations map[uint32][]shared.IpamType
+	subnetworkAllocations map[uint32][]interfaces.IpamType
 	reservedIpCount       uint32
 }
 
-func NewMemoryRepository() shared.IpamRepository {
+func NewMemoryRepository() interfaces.IpamRepository {
 	return &memoryRepository{
-		subnetworkAllocations: make(map[uint32][]shared.IpamType),
+		subnetworkAllocations: make(map[uint32][]interfaces.IpamType),
 		reservedIpCount:       1,
 	}
 }
 
-func (r *memoryRepository) Allocate(subnetwork *shared.SubnetworkModel, resourceType shared.IpamType) (*net.IPNet, error) {
+func (r *memoryRepository) Allocate(subnetwork *interfaces.SubnetworkModel, resourceType interfaces.IpamType) (*net.IPNet, error) {
 	allocations, exists := r.subnetworkAllocations[subnetwork.Id]
 
 	if !exists {
@@ -31,7 +31,7 @@ func (r *memoryRepository) Allocate(subnetwork *shared.SubnetworkModel, resource
 	}
 
 	for i := range allocations {
-		if allocations[i] != shared.IPAM_UNALLOCATED {
+		if allocations[i] != interfaces.IPAM_UNALLOCATED {
 			continue
 		}
 
@@ -46,7 +46,7 @@ func (r *memoryRepository) Allocate(subnetwork *shared.SubnetworkModel, resource
 	return nil, fmt.Errorf("subnetwork has run out of allocatable IPs")
 }
 
-func (r *memoryRepository) Deallocate(subnetwork *shared.SubnetworkModel, ip *net.IPNet) error {
+func (r *memoryRepository) Deallocate(subnetwork *interfaces.SubnetworkModel, ip *net.IPNet) error {
 	allocations, exists := r.subnetworkAllocations[subnetwork.Id]
 
 	if !exists {
@@ -59,31 +59,31 @@ func (r *memoryRepository) Deallocate(subnetwork *shared.SubnetworkModel, ip *ne
 		return fmt.Errorf("IP is outside of bounds of the subnetwork")
 	}
 
-	if allocations[i] == shared.IPAM_UNALLOCATED {
+	if allocations[i] == interfaces.IPAM_UNALLOCATED {
 		return fmt.Errorf("subnetwork does not have this IP allocated")
 	}
 
-	allocations[i] = shared.IPAM_UNALLOCATED
+	allocations[i] = interfaces.IPAM_UNALLOCATED
 	return nil
 }
 
-func (r *memoryRepository) HasAllocations(subnetwork *shared.SubnetworkModel) (shared.IpamType, bool) {
+func (r *memoryRepository) HasAllocations(subnetwork *interfaces.SubnetworkModel) (interfaces.IpamType, bool) {
 	allocations, exists := r.subnetworkAllocations[subnetwork.Id]
 
 	if !exists {
-		return shared.IPAM_UNALLOCATED, false
+		return interfaces.IPAM_UNALLOCATED, false
 	}
 
 	for i := range allocations {
-		if allocations[i] != shared.IPAM_UNALLOCATED {
+		if allocations[i] != interfaces.IPAM_UNALLOCATED {
 			return allocations[i], true
 		}
 	}
 
-	return shared.IPAM_UNALLOCATED, false
+	return interfaces.IPAM_UNALLOCATED, false
 }
 
-func (r *memoryRepository) GetSubnetworkGateway(subnetwork *shared.SubnetworkModel) *net.IPNet {
+func (r *memoryRepository) GetSubnetworkGateway(subnetwork *interfaces.SubnetworkModel) *net.IPNet {
 	ip := subnetwork.Address + 1
 
 	return &net.IPNet{
@@ -92,11 +92,11 @@ func (r *memoryRepository) GetSubnetworkGateway(subnetwork *shared.SubnetworkMod
 	}
 }
 
-func (r *memoryRepository) initSubnetworkAllocation(subnetwork *shared.SubnetworkModel) []shared.IpamType {
+func (r *memoryRepository) initSubnetworkAllocation(subnetwork *interfaces.SubnetworkModel) []interfaces.IpamType {
 	noOfHosts := uint32(math.Pow(2, float64(32-subnetwork.PrefixLength))) - 2
 	unreservedNoOfHosts := noOfHosts - r.reservedIpCount
 
-	allocations := make([]shared.IpamType, unreservedNoOfHosts)
+	allocations := make([]interfaces.IpamType, unreservedNoOfHosts)
 
 	r.subnetworkAllocations[subnetwork.Id] = allocations
 	return allocations
