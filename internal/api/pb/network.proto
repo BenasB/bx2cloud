@@ -1,0 +1,34 @@
+syntax = "proto3";
+package bx2cloud;
+
+option go_package = "github.com/BenasB/bx2cloud/internal/api/pb";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service NetworkService {
+    rpc Get (NetworkIdentificationRequest) returns (Network);
+    rpc List (google.protobuf.Empty) returns (stream Network);
+    rpc Create (NetworkCreationRequest) returns (Network);
+    rpc Update (NetworkUpdateRequest) returns (Network);
+    rpc Delete (NetworkIdentificationRequest) returns (google.protobuf.Empty);
+}
+
+message NetworkIdentificationRequest {
+    uint32 id = 1;
+}
+
+message NetworkCreationRequest {
+    bool internet_access = 1;
+}
+
+message NetworkUpdateRequest {
+    NetworkIdentificationRequest identification = 1;
+    NetworkCreationRequest update = 2;
+}
+
+message Network {
+    uint32 id = 1;
+    bool internet_access = 2;
+    google.protobuf.Timestamp createdAt = 4;
+}

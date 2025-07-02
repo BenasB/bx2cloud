@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/network"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/shared"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
 	"github.com/google/go-cmp/cmp"
@@ -16,13 +17,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var testNetworks = []*shared.NetworkModel{
-	&shared.NetworkModel{
+var testNetworks = []*interfaces.NetworkModel{
+	&interfaces.NetworkModel{
 		Id:             1,
 		InternetAccess: false,
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Hour)),
 	},
-	&shared.NetworkModel{
+	&interfaces.NetworkModel{
 		Id:             42,
 		InternetAccess: true,
 		CreatedAt:      timestamppb.New(time.Now().Add(-time.Minute)),
@@ -124,7 +125,7 @@ func TestNetwork_Get(t *testing.T) {
 }
 
 func TestNetwork_List(t *testing.T) {
-	stream := shared.NewMockStream[*shared.NetworkModel](t.Context())
+	stream := shared.NewMockStream[*interfaces.NetworkModel](t.Context())
 
 	repository := network.NewMemoryRepository(testNetworks)
 	subnetworkRepository := subnetwork.NewMemoryRepository(nil)

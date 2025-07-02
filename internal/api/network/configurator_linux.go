@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -67,19 +67,26 @@ func NewNamespaceConfigurator() (*namespaceConfigurator, error) {
 	}, nil
 }
 
-func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
-	nsName := n.GetNetworkNamespaceName(model)
+func (n *namespaceConfigurator) Configure(model *interfaces.NetworkModel) error {
+	nsName := n.GetNetworkNamespaceName(model.Id)
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	origNs, err := netns.Get()
 	defer origNs.Close()
-
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
 	}
+	defer func() {
+		if err := netns.Set(origNs); err != nil {
+			panic("failed to move back to the original network namespace, panicking to not change unexpected state")
+		}
+	}()
 
 	ns, err := netns.GetFromName(nsName)
 	defer ns.Close()
 	if err != nil {
-		runtime.LockOSThread()
 		ns, err = netns.NewNamed(nsName)
 		if err != nil {
 			return fmt.Errorf("failed to create a network namespace for the network: %w", err)
@@ -88,12 +95,10 @@ func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
 		if err := netns.Set(origNs); err != nil {
 			return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
 		}
-		runtime.UnlockOSThread()
 	}
 
-	runtime.LockOSThread()
 	if err := netns.Set(ns); err != nil {
-		return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+		return fmt.Errorf("failed to switch to the network's namespace: %w", err)
 	}
 
 	if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0644); err != nil {
@@ -103,7 +108,6 @@ func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
 	if err := netns.Set(origNs); err != nil {
 		return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
 	}
-	runtime.UnlockOSThread()
 
 	if model.InternetAccess {
 		if err := n.configureInternetAccess(model, origNs, ns); err != nil {
@@ -120,14 +124,22 @@ func (n *namespaceConfigurator) configure(model *shared.NetworkModel) error {
 	return nil
 }
 
-func (n *namespaceConfigurator) unconfigure(model *shared.NetworkModel) error {
-	nsName := n.GetNetworkNamespaceName(model)
+func (n *namespaceConfigurator) Unconfigure(model *interfaces.NetworkModel) error {
+	nsName := n.GetNetworkNamespaceName(model.Id)
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
 	origNs, err := netns.Get()
 	defer origNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
 	}
+	defer func() {
+		if err := netns.Set(origNs); err != nil {
+			panic("failed to move back to the original network namespace, panicking to not change unexpected state")
+		}
+	}()
 
 	ns, nsErr := netns.GetFromName(nsName)
 	defer ns.Close()
@@ -147,7 +159,7 @@ func (n *namespaceConfigurator) unconfigure(model *shared.NetworkModel) error {
 	return nil
 }
 
-func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
+func (n *namespaceConfigurator) configureInternetAccess(model *interfaces.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
 	rootVethName := n.getRootVethName(model)
 	nsVethName := n.getNsVethName(model)
 
@@ -199,9 +211,8 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 		}
 	}
 
-	runtime.LockOSThread()
 	if err := netns.Set(ns); err != nil {
-		return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+		return fmt.Errorf("failed to switch to the network's namespace: %w", err)
 	}
 
 	nsVeth, err := netlink.LinkByName(nsVethName)
@@ -282,7 +293,6 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	if err := netns.Set(origNs); err != nil {
 		return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
 	}
-	runtime.UnlockOSThread()
 
 	err = n.ipt.AppendUnique("nat", "POSTROUTING",
 		"-s", nsVethAddr.IPNet.String(),
@@ -297,11 +307,10 @@ func (n *namespaceConfigurator) configureInternetAccess(model *shared.NetworkMod
 	return nil
 }
 
-func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
+func (n *namespaceConfigurator) unconfigureInternetAccess(model *interfaces.NetworkModel, origNs netns.NsHandle, ns netns.NsHandle) error {
 	if ns.IsOpen() {
-		runtime.LockOSThread()
 		if err := netns.Set(ns); err != nil {
-			return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+			return fmt.Errorf("failed to switch to the network's namespace: %w", err)
 		}
 
 		nsVeth, err := netlink.LinkByName(n.getNsVethName(model))
@@ -355,7 +364,6 @@ func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkM
 		if err := netns.Set(origNs); err != nil {
 			return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
 		}
-		runtime.UnlockOSThread()
 	}
 
 	rootVeth, err := netlink.LinkByName(n.getRootVethName(model))
@@ -379,19 +387,19 @@ func (n *namespaceConfigurator) unconfigureInternetAccess(model *shared.NetworkM
 	return nil
 }
 
-func (n *namespaceConfigurator) GetNetworkNamespaceName(model *shared.NetworkModel) string {
-	return fmt.Sprintf("bx2cloud-router-%d", model.Id)
+func (n *namespaceConfigurator) GetNetworkNamespaceName(id uint32) string {
+	return fmt.Sprintf("bx2cloud-router-%d", id)
 }
 
-func (n *namespaceConfigurator) getRootVethName(model *shared.NetworkModel) string {
+func (n *namespaceConfigurator) getRootVethName(model *interfaces.NetworkModel) string {
 	return fmt.Sprintf("bx2-r-%d", model.Id)
 }
 
-func (n *namespaceConfigurator) getNsVethName(model *shared.NetworkModel) string {
+func (n *namespaceConfigurator) getNsVethName(model *interfaces.NetworkModel) string {
 	return fmt.Sprintf("bx2-r-%d-ns", model.Id)
 }
 
-func (n *namespaceConfigurator) getRootVethAddr(model *shared.NetworkModel) *netlink.Addr {
+func (n *namespaceConfigurator) getRootVethAddr(model *interfaces.NetworkModel) *netlink.Addr {
 	const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
 	networkIp := networkIpStart + model.Id<<2
 	vethIp := networkIp + 1
@@ -404,7 +412,7 @@ func (n *namespaceConfigurator) getRootVethAddr(model *shared.NetworkModel) *net
 	}
 }
 
-func (n *namespaceConfigurator) getNsVethAddr(model *shared.NetworkModel) *netlink.Addr {
+func (n *namespaceConfigurator) getNsVethAddr(model *interfaces.NetworkModel) *netlink.Addr {
 	const networkIpStart uint32 = 0b_11000000_10100111_00000000_00000000
 	networkIp := networkIpStart + model.Id<<2
 	vethIp := networkIp + 2

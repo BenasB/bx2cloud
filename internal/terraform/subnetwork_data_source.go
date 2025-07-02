@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -66,7 +66,7 @@ func (d *subnetworkDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed:    true,
 			},
 			"cidr": schema.StringAttribute{
-				Description: "Specifies the subnetwork's address and mask prefix length in CIDR notation. for example 10.0.8.0/24, 192.168.10.8/30.",
+				Description: "Specifies the subnetwork's address and mask prefix length in CIDR notation. For example `10.0.8.0/24`, `192.168.10.8/30`.",
 				Computed:    true,
 			},
 			"created_at": schema.StringAttribute{

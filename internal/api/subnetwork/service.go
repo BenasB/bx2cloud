@@ -2,62 +2,112 @@ package subnetwork
 
 import (
 	"context"
+	"encoding/binary"
+	"fmt"
+	"net"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type Service struct {
+type service struct {
 	pb.UnimplementedSubnetworkServiceServer
-	repository        shared.SubnetworkRepository
-	networkRepository shared.NetworkRepository
+	repository        interfaces.SubnetworkRepository
+	networkRepository interfaces.NetworkRepository
 	configurator      configurator
+	ipamRepository    interfaces.IpamRepository
 }
 
-func NewService(subnetworkRepository shared.SubnetworkRepository, networkRepository shared.NetworkRepository, configurator configurator) *Service {
-	return &Service{
+func NewService(
+	subnetworkRepository interfaces.SubnetworkRepository,
+	networkRepository interfaces.NetworkRepository,
+	configurator configurator,
+	ipamRepository interfaces.IpamRepository,
+) *service {
+	return &service{
 		repository:        subnetworkRepository,
 		networkRepository: networkRepository,
 		configurator:      configurator,
+		ipamRepository:    ipamRepository,
 	}
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*shared.SubnetworkModel, error) {
+func (s *service) Get(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*pb.Subnetwork, error) {
 	return s.repository.Get(req.Id)
 }
 
-func (s *Service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
-	subnetwork, err := s.repository.Delete(req.Id)
+func (s *service) Delete(ctx context.Context, req *pb.SubnetworkIdentificationRequest) (*emptypb.Empty, error) {
+	subnetwork, err := s.repository.Get(req.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	network, err := s.networkRepository.Get(subnetwork.NetworkId)
+	if alloc, found := s.ipamRepository.HasAllocations(subnetwork); found {
+		switch alloc {
+		case interfaces.IPAM_CONTAINER:
+			return nil, fmt.Errorf("the subnetwork still has an IP allocated for a container")
+		default:
+			return nil, fmt.Errorf("the subnetwork still has an IP allocated for a resource")
+		}
+	}
+
+	_, err = s.repository.Delete(subnetwork.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Handle things that are connected to this subnetwork
-
-	if err := s.configurator.unconfigure(subnetwork, network); err != nil {
+	if err := s.configurator.Unconfigure(subnetwork); err != nil {
 		return nil, err
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*shared.SubnetworkModel, error) {
-	network, err := s.networkRepository.Get(req.NetworkId)
-	if err != nil {
+func (s *service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest) (*pb.Subnetwork, error) {
+	if _, err := s.networkRepository.Get(req.NetworkId); err != nil {
 		return nil, err
 	}
 
-	newSubnetwork := &shared.SubnetworkModel{
+	newSubnetwork := &interfaces.SubnetworkModel{
 		NetworkId:    req.NetworkId,
-		Address:      req.Address, // TODO: AND address with network mask to make sure this stores the network IP + unit test
+		Address:      req.Address, // TODO: #1 AND address with network mask to make sure this stores the network IP + unit test
 		PrefixLength: req.PrefixLength,
+	}
+
+	subnetworks, errors := s.repository.GetAllByNetworkId(req.NetworkId, ctx)
+
+	err := func() error {
+		for {
+			select {
+			case subnetwork, ok := <-subnetworks:
+				if !ok {
+					select {
+					case err := <-errors:
+						return err
+					default:
+						return nil
+					}
+				} else {
+					minPrefixLength := min(newSubnetwork.PrefixLength, subnetwork.PrefixLength)
+					minMask := binary.BigEndian.Uint32(net.CIDRMask(int(minPrefixLength), 32))
+					a := newSubnetwork.Address & minMask
+					b := subnetwork.Address & minMask
+					if a == b {
+						return fmt.Errorf("new subnetwork would overlap with subnetwork %d", subnetwork.Id)
+					}
+				}
+			case err, ok := <-errors:
+				if ok {
+					return err
+				}
+			}
+		}
+	}()
+
+	if err != nil {
+		return nil, err
 	}
 
 	returnedSubnetwork, err := s.repository.Add(newSubnetwork)
@@ -65,15 +115,15 @@ func (s *Service) Create(ctx context.Context, req *pb.SubnetworkCreationRequest)
 		return nil, err
 	}
 
-	if err := s.configurator.configure(returnedSubnetwork, network); err != nil {
+	if err := s.configurator.Configure(returnedSubnetwork); err != nil {
 		return nil, err
 	}
 
 	return returnedSubnetwork, nil
 }
 
-func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*shared.SubnetworkModel, error) {
-	subnetwork, err := s.repository.Update(req.Identification.Id, func(sn *shared.SubnetworkModel) {
+func (s *service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (*pb.Subnetwork, error) {
+	subnetwork, err := s.repository.Update(req.Identification.Id, func(sn *interfaces.SubnetworkModel) {
 		sn.Address = req.Update.Address
 		sn.PrefixLength = req.Update.PrefixLength
 	})
@@ -82,19 +132,14 @@ func (s *Service) Update(ctx context.Context, req *pb.SubnetworkUpdateRequest) (
 		return nil, err
 	}
 
-	network, err := s.networkRepository.Get(subnetwork.NetworkId)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.configurator.configure(subnetwork, network); err != nil {
+	if err := s.configurator.Configure(subnetwork); err != nil {
 		return nil, err
 	}
 
 	return subnetwork, nil
 }
 
-func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[shared.SubnetworkModel]) error {
+func (s *service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Subnetwork]) error {
 	subnetworks, errors := s.repository.GetAll(stream.Context())
 
 	for {

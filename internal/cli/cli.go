@@ -6,8 +6,11 @@ import (
 	"os"
 	"strconv"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
+	"github.com/BenasB/bx2cloud/internal/cli/container"
 	"github.com/BenasB/bx2cloud/internal/cli/exits"
+	"github.com/BenasB/bx2cloud/internal/cli/network"
+	"github.com/BenasB/bx2cloud/internal/cli/subnetwork"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -46,7 +49,7 @@ func Run(args []string) exits.ExitCode {
 
 		switch subcommand {
 		case "list":
-			cmdErr = networkList(client)
+			cmdErr = network.List(client)
 		case "get":
 			if len(args) == 0 {
 				fmt.Fprintf(os.Stderr, "Missing id argument\n")
@@ -61,7 +64,7 @@ func Run(args []string) exits.ExitCode {
 				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
-			cmdErr = networkGet(client, uint32(id))
+			cmdErr = network.Get(client, uint32(id))
 		case "delete":
 			if len(args) == 0 {
 				fmt.Fprintf(os.Stderr, "Missing id argument\n")
@@ -76,15 +79,16 @@ func Run(args []string) exits.ExitCode {
 				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
-			cmdErr = networkDelete(client, uint32(id))
+			cmdErr = network.Delete(client, uint32(id))
 		case "create":
+			// TODO: #2 Read a file and fallback to os.Stdin if no file is supplied
 			yamlBytes, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				cmdErr = err
 				break
 			}
 
-			cmdErr = networkCreate(client, yamlBytes)
+			cmdErr = network.Create(client, yamlBytes)
 		case "update":
 			yamlBytes, err := io.ReadAll(os.Stdin)
 			if err != nil {
@@ -106,7 +110,7 @@ func Run(args []string) exits.ExitCode {
 				return exits.BAD_ARGUMENT
 			}
 
-			cmdErr = networkUpdate(client, uint32(id), yamlBytes)
+			cmdErr = network.Update(client, uint32(id), yamlBytes)
 		default:
 			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
 			return exits.UNKNOWN_SUBCOMMAND
@@ -124,7 +128,7 @@ func Run(args []string) exits.ExitCode {
 
 		switch subcommand {
 		case "list":
-			cmdErr = subnetworkList(client)
+			cmdErr = subnetwork.List(client)
 		case "get":
 			if len(args) == 0 {
 				fmt.Fprintf(os.Stderr, "Missing id argument\n")
@@ -139,7 +143,7 @@ func Run(args []string) exits.ExitCode {
 				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
-			cmdErr = subnetworkGet(client, uint32(id))
+			cmdErr = subnetwork.Get(client, uint32(id))
 		case "delete":
 			if len(args) == 0 {
 				fmt.Fprintf(os.Stderr, "Missing id argument\n")
@@ -154,7 +158,7 @@ func Run(args []string) exits.ExitCode {
 				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
 				return exits.BAD_ARGUMENT
 			}
-			cmdErr = subnetworkDelete(client, uint32(id))
+			cmdErr = subnetwork.Delete(client, uint32(id))
 		case "create":
 			yamlBytes, err := io.ReadAll(os.Stdin)
 			if err != nil {
@@ -162,7 +166,7 @@ func Run(args []string) exits.ExitCode {
 				break
 			}
 
-			cmdErr = subnetworkCreate(client, yamlBytes)
+			cmdErr = subnetwork.Create(client, yamlBytes)
 		case "update":
 			yamlBytes, err := io.ReadAll(os.Stdin)
 			if err != nil {
@@ -184,7 +188,108 @@ func Run(args []string) exits.ExitCode {
 				return exits.BAD_ARGUMENT
 			}
 
-			cmdErr = subnetworkUpdate(client, uint32(id), yamlBytes)
+			cmdErr = subnetwork.Update(client, uint32(id), yamlBytes)
+		default:
+			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
+			return exits.UNKNOWN_SUBCOMMAND
+		}
+	case "container":
+		if len(args) == 0 {
+			fmt.Fprintf(os.Stderr, "Missing subcommand\n")
+			return exits.MISSING_SUBCOMMAND
+		}
+		subcommand := args[0]
+		args = args[1:]
+
+		client := pb.NewContainerServiceClient(conn)
+		cmdErrCode = exits.CONTAINER_ERROR
+
+		switch subcommand {
+		case "list":
+			cmdErr = container.List(client)
+		case "get":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = container.Get(client, uint32(id))
+		case "delete":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = container.Delete(client, uint32(id))
+		case "create":
+			yamlBytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				cmdErr = err
+				break
+			}
+
+			cmdErr = container.Create(client, yamlBytes)
+		case "exec":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = container.Exec(client, uint32(id), args)
+		case "start":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = container.Start(client, uint32(id))
+		case "stop":
+			if len(args) == 0 {
+				fmt.Fprintf(os.Stderr, "Missing id argument\n")
+				return exits.MISSING_ARGUMENT
+			}
+
+			idString := args[0]
+			args = args[1:]
+
+			id, err := strconv.ParseUint(idString, 10, 32)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not convert the id '%d' argument to an integer\n", id)
+				return exits.BAD_ARGUMENT
+			}
+			cmdErr = container.Stop(client, uint32(id))
 		default:
 			fmt.Fprintf(os.Stderr, "Unrecognized subcommand '%s'\n", subcommand)
 			return exits.UNKNOWN_SUBCOMMAND

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
@@ -38,7 +38,7 @@ func TestAccSubnetworkResource(t *testing.T) {
 			t.Fatalf("Failed to delete network '%d' after running the terraform test: %v", networkOne.Id, err)
 		}
 		networkTwoDeleteReq := &pb.NetworkIdentificationRequest{
-			Id: networkOne.Id,
+			Id: networkTwo.Id,
 		}
 		_, err = grpcClients.Network.Delete(context.Background(), networkTwoDeleteReq)
 		if err != nil {

@@ -3,11 +3,36 @@
 version: "3"
 
 tasks:
-  generate:
+  pb-generate:
     desc: Generate Go protobuf and gRPC code
-    dir: internal/api
+    dir: internal/api/pb
     cmds:
       - protoc
         --go_out=. --go_opt=paths=source_relative
         --go-grpc_out=. --go-grpc_opt=paths=source_relative
-        api.proto
+        *.proto
+
+  tf-test:
+    desc: Run acceptance tests for the terraform provider
+    dir: internal/terraform
+    env:
+      TF_ACC: 1
+    cmds:
+      - go test -count=1 -v
+  
+  tf-build:
+    desc: Build terraform provider in examples directory
+    cmds:
+      - go build -o ./examples/terraform/providers/local/benasb/bx2cloud/1.0.0/windows_amd64/terraform-provider-bx2cloud.exe ./cmd/terraform/
+      - task: tf-reinit
+
+  tf-reinit:
+    desc: Clean up terraform examples and rerun `terraform init`
+    vars:
+      TF_EXAMPLE_DIRS:
+        sh: find examples/terraform -name 'main.tf' -printf '%h\n'
+    cmds:
+      - for: { var: TF_EXAMPLE_DIRS }
+        cmd: |
+          rm -rf "{{.ITEM}}/.terraform" "{{.ITEM}}/.terraform.lock.hcl"; \
+          terraform -chdir={{.ITEM}} init -plugin-dir=../providers > /dev/null; \

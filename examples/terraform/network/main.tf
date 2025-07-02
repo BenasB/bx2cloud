@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     bx2cloud = {
-      source = "registry.terraform.io/hashicorp/bx2cloud"
+      source = "local/benasb/bx2cloud"
     }
   }
 }

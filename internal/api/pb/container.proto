@@ -1,0 +1,65 @@
+syntax = "proto3";
+package bx2cloud;
+
+option go_package = "github.com/BenasB/bx2cloud/internal/api/pb";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service ContainerService {
+    rpc Get (ContainerIdentificationRequest) returns (Container);
+    rpc List (google.protobuf.Empty) returns (stream Container);
+    rpc Create (ContainerCreationRequest) returns (Container);
+    rpc Delete (ContainerIdentificationRequest) returns (google.protobuf.Empty);
+    rpc Exec (stream ContainerExecRequest) returns (stream ContainerExecResponse);
+    rpc Start (ContainerIdentificationRequest) returns (Container);
+    rpc Stop (ContainerIdentificationRequest) returns (Container);
+}
+
+message ContainerIdentificationRequest {
+    uint32 id = 1;
+}
+
+message ContainerCreationRequest {
+    uint32 subnetwork_id = 1;
+    string image = 2;
+    repeated string entrypoint = 3;
+    repeated string cmd = 4;
+    repeated string env = 5;
+}
+
+message Container {
+    uint32 id = 1;
+    fixed32 address = 2;
+    fixed32 prefix_length = 3;
+    string status = 4;
+    string image = 5;
+    google.protobuf.Timestamp createdAt = 6;
+    google.protobuf.Timestamp startedAt = 7;
+    uint32 subnetwork_id = 8;
+    repeated string entrypoint = 9;
+    repeated string cmd = 10;
+    repeated string env = 11;
+}
+
+message ContainerExecRequest {
+    oneof input {
+        ContainerExecInitializationRequest initialization = 1;
+        bytes stdin = 2;
+    }
+}
+
+message ContainerExecInitializationRequest {
+    ContainerIdentificationRequest identification = 1;
+    int32 console_width = 2;
+    int32 console_height = 3;
+    optional string terminal = 4;
+    repeated string args = 5;
+}
+
+message ContainerExecResponse {
+    oneof output {
+        bytes stdout = 1;
+        int32 exit_code = 2;
+    }
+}

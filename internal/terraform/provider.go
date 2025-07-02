@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -22,6 +22,7 @@ type bx2cloudProviderModel struct {
 type Bx2cloudClients struct {
 	Network    pb.NetworkServiceClient
 	Subnetwork pb.SubnetworkServiceClient
+	Container  pb.ContainerServiceClient
 }
 
 var _ provider.Provider = &bx2cloudProvider{}
@@ -114,6 +115,7 @@ func (p *bx2cloudProvider) Configure(ctx context.Context, req provider.Configure
 	clients := &Bx2cloudClients{
 		Network:    pb.NewNetworkServiceClient(conn),
 		Subnetwork: pb.NewSubnetworkServiceClient(conn),
+		Container:  pb.NewContainerServiceClient(conn),
 	}
 
 	resp.DataSourceData = clients
@@ -124,6 +126,7 @@ func (p *bx2cloudProvider) DataSources(ctx context.Context) []func() datasource.
 	return []func() datasource.DataSource{
 		NewNetworkDataSource,
 		NewSubnetworkDataSource,
+		NewContainerDataSource,
 	}
 }
 
@@ -131,5 +134,6 @@ func (p *bx2cloudProvider) Resources(ctx context.Context) []func() resource.Reso
 	return []func() resource.Resource{
 		NewNetworkResource,
 		NewSubnetworkResource,
+		NewContainerResource,
 	}
 }

@@ -3,10 +3,9 @@ package subnetwork
 import (
 	"fmt"
 	"log"
-	"net"
 	"runtime"
 
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
@@ -14,35 +13,44 @@ import (
 var _ configurator = &bridgeConfigurator{}
 
 type bridgeConfigurator struct {
-	getNetworkNamespaceName func(*shared.NetworkModel) string
+	getNetworkNamespaceName func(uint32) string
+	ipamRepository          interfaces.IpamRepository
 }
 
-func NewBridgeConfigurator(getNetworkNamespaceName func(*shared.NetworkModel) string) *bridgeConfigurator {
+func NewBridgeConfigurator(getNetworkNamespaceName func(uint32) string, ipamRepository interfaces.IpamRepository) *bridgeConfigurator {
 	return &bridgeConfigurator{
 		getNetworkNamespaceName: getNetworkNamespaceName,
+		ipamRepository:          ipamRepository,
 	}
 }
 
-func (b *bridgeConfigurator) configure(model *shared.SubnetworkModel, networkModel *shared.NetworkModel) error {
+func (b *bridgeConfigurator) Configure(model *interfaces.SubnetworkModel) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	origNs, err := netns.Get()
 	defer origNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
 	}
+	defer func() {
+		if err := netns.Set(origNs); err != nil {
+			panic("failed to move back to the original network namespace, panicking to not change unexpected state")
+		}
+	}()
 
-	netNsName := b.getNetworkNamespaceName(networkModel)
+	netNsName := b.getNetworkNamespaceName(model.NetworkId)
 	netNs, err := netns.GetFromName(netNsName)
 	defer netNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to get the network namespace for the network: %w", err)
 	}
 
-	runtime.LockOSThread()
 	if err := netns.Set(netNs); err != nil {
-		return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+		return fmt.Errorf("failed to switch to the network's namespace: %w", err)
 	}
 
-	bridgeName := b.getBridgeInterfaceName(model)
+	bridgeName := b.GetBridgeName(model.Id)
 	bridge, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		la := netlink.NewLinkAttrs()
@@ -63,7 +71,9 @@ func (b *bridgeConfigurator) configure(model *shared.SubnetworkModel, networkMod
 		return fmt.Errorf("failed to retrieve IP addresses of the bridge: %w", err)
 	}
 
-	bridgeAddr := b.getBridgeAddr(model)
+	bridgeAddr := &netlink.Addr{
+		IPNet: b.ipamRepository.GetSubnetworkGateway(model),
+	}
 
 	var expectedIpExists = false
 	for _, addr := range bridgeAddrs {
@@ -92,33 +102,39 @@ func (b *bridgeConfigurator) configure(model *shared.SubnetworkModel, networkMod
 	if err := netns.Set(origNs); err != nil {
 		return fmt.Errorf("failed to switch back to the root network namespace: %w", err)
 	}
-	runtime.UnlockOSThread()
 
 	log.Printf("Successfully configured subnetwork with the id %d", model.Id)
 
 	return nil
 }
 
-func (b *bridgeConfigurator) unconfigure(model *shared.SubnetworkModel, networkModel *shared.NetworkModel) error {
+func (b *bridgeConfigurator) Unconfigure(model *interfaces.SubnetworkModel) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	origNs, err := netns.Get()
 	defer origNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the original network namespace: %w", err)
 	}
+	defer func() {
+		if err := netns.Set(origNs); err != nil {
+			panic("failed to move back to the original network namespace, panicking to not change unexpected state")
+		}
+	}()
 
-	netNsName := b.getNetworkNamespaceName(networkModel)
+	netNsName := b.getNetworkNamespaceName(model.NetworkId)
 	netNs, err := netns.GetFromName(netNsName)
 	defer netNs.Close()
 	if err != nil {
 		return fmt.Errorf("failed to get the network namespace for the network: %w", err)
 	}
 
-	runtime.LockOSThread()
 	if err := netns.Set(netNs); err != nil {
-		return fmt.Errorf("failed to switch to the network namespace of the network: %w", err)
+		return fmt.Errorf("failed to switch to the network's namespace: %w", err)
 	}
 
-	bridge, err := netlink.LinkByName(b.getBridgeInterfaceName(model))
+	bridge, err := netlink.LinkByName(b.GetBridgeName(model.Id))
 	if err == nil {
 		if netlink.LinkDel(bridge); err != nil {
 			return fmt.Errorf("failed to remove the bridge interface: %w", err)
@@ -128,24 +144,12 @@ func (b *bridgeConfigurator) unconfigure(model *shared.SubnetworkModel, networkM
 	if err := netns.Set(origNs); err != nil {
 		return fmt.Errorf("failed to switch to the root network namespace: %w", err)
 	}
-	runtime.UnlockOSThread()
 
 	log.Printf("Successfully unconfigured subnetwork with the id %d", model.Id)
 
 	return nil
 }
 
-func (b *bridgeConfigurator) getBridgeInterfaceName(model *shared.SubnetworkModel) string {
-	return fmt.Sprintf("bx2-br-%d", model.Id)
-}
-
-func (b *bridgeConfigurator) getBridgeAddr(model *shared.SubnetworkModel) *netlink.Addr {
-	bridgeIp := model.Address + 1
-
-	return &netlink.Addr{
-		IPNet: &net.IPNet{
-			IP:   net.IPv4(byte(bridgeIp>>24), byte(bridgeIp>>16), byte(bridgeIp>>8), byte(bridgeIp)),
-			Mask: net.CIDRMask(int(model.PrefixLength), 32),
-		},
-	}
+func (b *bridgeConfigurator) GetBridgeName(id uint32) string {
+	return fmt.Sprintf("bx2-br-%d", id)
 }

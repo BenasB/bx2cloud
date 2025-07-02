@@ -4,13 +4,13 @@ import (
 	"encoding/binary"
 	"time"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
 	"github.com/BenasB/bx2cloud/internal/api/id"
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var sampleNetworks = []*shared.NetworkModel{
+var sampleNetworks = []*interfaces.NetworkModel{
 	&pb.Network{
 		Id:             id.NextId("network"),
 		InternetAccess: false,
@@ -28,7 +28,7 @@ var sampleNetworks = []*shared.NetworkModel{
 	},
 }
 
-var sampleSubnetworks = []*shared.SubnetworkModel{
+var sampleSubnetworks = []*interfaces.SubnetworkModel{
 	&pb.Subnetwork{
 		Id:           id.NextId("subnetwork"),
 		NetworkId:    sampleNetworks[0].Id,

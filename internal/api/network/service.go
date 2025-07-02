@@ -4,32 +4,32 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
-	"github.com/BenasB/bx2cloud/internal/api/shared"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type Service struct {
+type service struct {
 	pb.UnimplementedNetworkServiceServer
-	repository           shared.NetworkRepository
-	subnetworkRepository shared.SubnetworkRepository
+	repository           interfaces.NetworkRepository
+	subnetworkRepository interfaces.SubnetworkRepository
 	configurator         configurator
 }
 
-func NewService(repository shared.NetworkRepository, subnetworkRepository shared.SubnetworkRepository, configurator configurator) *Service {
-	return &Service{
+func NewService(repository interfaces.NetworkRepository, subnetworkRepository interfaces.SubnetworkRepository, configurator configurator) *service {
+	return &service{
 		repository:           repository,
 		subnetworkRepository: subnetworkRepository,
 		configurator:         configurator,
 	}
 }
 
-func (s *Service) Get(ctx context.Context, req *pb.NetworkIdentificationRequest) (*shared.NetworkModel, error) {
+func (s *service) Get(ctx context.Context, req *pb.NetworkIdentificationRequest) (*pb.Network, error) {
 	return s.repository.Get(req.Id)
 }
 
-func (s *Service) Delete(ctx context.Context, req *pb.NetworkIdentificationRequest) (*emptypb.Empty, error) {
+func (s *service) Delete(ctx context.Context, req *pb.NetworkIdentificationRequest) (*emptypb.Empty, error) {
 	subnetworks, errors := s.subnetworkRepository.GetAllByNetworkId(req.Id, ctx)
 	select {
 	case subnetwork, ok := <-subnetworks:
@@ -48,15 +48,15 @@ func (s *Service) Delete(ctx context.Context, req *pb.NetworkIdentificationReque
 		return nil, err
 	}
 
-	if err := s.configurator.unconfigure(network); err != nil {
+	if err := s.configurator.Unconfigure(network); err != nil {
 		return nil, err
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*shared.NetworkModel, error) {
-	newNetwork := &shared.NetworkModel{
+func (s *service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*pb.Network, error) {
+	newNetwork := &interfaces.NetworkModel{
 		InternetAccess: req.InternetAccess,
 	}
 
@@ -66,15 +66,15 @@ func (s *Service) Create(ctx context.Context, req *pb.NetworkCreationRequest) (*
 	}
 
 	// TODO: eventual consistency mechanism?
-	if err := s.configurator.configure(returnedNetwork); err != nil {
+	if err := s.configurator.Configure(returnedNetwork); err != nil {
 		return nil, err
 	}
 
 	return returnedNetwork, nil
 }
 
-func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*shared.NetworkModel, error) {
-	network, err := s.repository.Update(req.Identification.Id, func(sn *shared.NetworkModel) {
+func (s *service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*pb.Network, error) {
+	network, err := s.repository.Update(req.Identification.Id, func(sn *interfaces.NetworkModel) {
 		sn.InternetAccess = req.Update.InternetAccess
 	})
 
@@ -82,14 +82,14 @@ func (s *Service) Update(ctx context.Context, req *pb.NetworkUpdateRequest) (*sh
 		return nil, err
 	}
 
-	if err := s.configurator.configure(network); err != nil {
+	if err := s.configurator.Configure(network); err != nil {
 		return nil, err
 	}
 
 	return network, nil
 }
 
-func (s *Service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[shared.NetworkModel]) error {
+func (s *service) List(req *emptypb.Empty, stream grpc.ServerStreamingServer[pb.Network]) error {
 	networks, errors := s.repository.GetAll(stream.Context())
 
 	for {

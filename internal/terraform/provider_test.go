@@ -3,7 +3,7 @@ package terraform_test
 import (
 	"fmt"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	provider "github.com/BenasB/bx2cloud/internal/terraform"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -35,5 +35,6 @@ func createGrpcClients() *provider.Bx2cloudClients {
 	return &provider.Bx2cloudClients{
 		Network:    pb.NewNetworkServiceClient(conn),
 		Subnetwork: pb.NewSubnetworkServiceClient(conn),
+		Container:  pb.NewContainerServiceClient(conn),
 	}
 }

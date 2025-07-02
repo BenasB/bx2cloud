@@ -2,10 +2,11 @@ package terraform_test
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"testing"
 
-	pb "github.com/BenasB/bx2cloud/internal/api"
+	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -21,7 +22,7 @@ func TestAccSubnetworkDataSource(t *testing.T) {
 
 	subnetworkCreateReq := &pb.SubnetworkCreationRequest{
 		NetworkId:    network.Id,
-		Address:      3232238088, // 192.168.10.8
+		Address:      binary.BigEndian.Uint32([]byte{192, 168, 10, 8}),
 		PrefixLength: 30,
 	}
 	subnetwork, err := grpcClients.Subnetwork.Create(t.Context(), subnetworkCreateReq)
