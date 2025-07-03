@@ -1,0 +1,146 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #222222;
+  --ifm-color-primary-dark: #1f1f1f;
+  --ifm-color-primary-darker: #1d1d1d;
+  --ifm-color-primary-darkest: #181818;
+  --ifm-color-primary-light: #252525;
+  --ifm-color-primary-lighter: #272727;
+  --ifm-color-primary-lightest: #2c2c2c;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-background-surface-color: #f0f0f0;
+  --ifm-background-color: #f0f0f0;
+  --ifm-font-color-base: #222;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme="dark"] {
+  --ifm-color-primary: #c4c4c4;
+  --ifm-color-primary-dark: #b0b0b0;
+  --ifm-color-primary-darker: #a7a7a7;
+  --ifm-color-primary-darkest: #898989;
+  --ifm-color-primary-light: #d8d8d8;
+  --ifm-color-primary-lighter: #e1e1e1;
+  --ifm-color-primary-lightest: #ffffff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-background-surface-color: #222;
+  --ifm-background-color: #222;
+  --ifm-font-color-base: #f0f0f0;
+}
+
+.sidebarLogo_isFc {
+  background-color: var(--ifm-background-surface-color);
+  margin: 0;
+  padding: 0 var(--ifm-navbar-padding-horizontal);
+}
+
+.theme-layout-navbar {
+  position: unset;
+  height: unset;
+  padding: 60px 30px;
+  background-color: #222;
+}
+
+[data-theme="dark"] .theme-layout-navbar {
+  position: unset;
+  height: unset;
+  padding: 60px 30px;
+  background-color: #f0f0f0;
+}
+
+[data-theme="dark"] .toggleButton_gllP:hover {
+  background-color: #f0f0f0;
+}
+
+.navbar-sidebar__brand {
+  background-color: #222;
+}
+
+[data-theme="dark"] .navbar-sidebar__brand {
+  background-color: #f0f0f0;
+}
+
+.navbar__inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 30px;
+}
+
+.navbar__logo {
+  height: 48px;
+  margin-right: 1rem;
+}
+
+.navbar-sidebar__brand .navbar__logo {
+  height: 24px;
+  margin-right: 0.5rem;
+}
+
+.navbar__title {
+  color: var(--ifm-background-color);
+  font-size: 56px;
+  line-height: 56px;
+}
+
+.navbar-sidebar__brand .navbar__title {
+  font-size: 28px;
+  line-height: 28px;
+}
+
+.navbar-sidebar__brand > button g {
+  stroke: var(--ifm-background-color);
+}
+
+.theme-layout-navbar-right,
+.navbar__item,
+.navbar-sidebar__brand {
+  color: var(--ifm-background-color);
+}
+
+.toggleButton_gllP:hover {
+  background: var(--ifm-color-emphasis-800);
+}
+
+[data-theme="dark"] .toggleButton_gllP:hover {
+  background: var(--ifm-color-emphasis-500);
+}
+
+.navbar__toggle {
+  color: var(--ifm-background-color);
+  margin-right: 1rem;
+}
+
+@media screen and (max-width: 996px) {
+  .theme-layout-navbar {
+    padding: 20px 10px;
+  }
+
+  .navbar__logo {
+    height: 24px;
+    margin-right: 0.5rem;
+  }
+
+  .navbar__inner {
+    padding: 0;
+  }
+
+  .navbar__title {
+    font-size: 28px;
+    line-height: 28px;
+  }
+}
+
+.theme-doc-sidebar-container {
+  margin-top: 0;
+}
+
+.theme-doc-sidebar-container > div > div {
+  padding-top: 0;
+}
