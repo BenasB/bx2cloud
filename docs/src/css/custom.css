@@ -137,10 +137,12 @@
   }
 }
 
-.theme-doc-sidebar-container {
-  margin-top: 0;
-}
+@media screen and (min-width: 997px) {
+  .theme-doc-sidebar-container {
+    margin-top: 0;
+  }
 
-.theme-doc-sidebar-container > div > div {
-  padding-top: 0;
+  .theme-doc-sidebar-container > div > div {
+    padding-top: 0;
+  }
 }
