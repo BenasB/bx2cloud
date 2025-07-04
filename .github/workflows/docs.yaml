@@ -6,6 +6,12 @@ on:
     #   - main
     paths:
       - docs/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - docs/**
+    
 
 jobs:
   build:
@@ -43,12 +49,14 @@ jobs:
 
       - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push'
         with:
           path: docs/build
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
+    if: github.event_name == 'push'
 
     permissions:
       pages: write
