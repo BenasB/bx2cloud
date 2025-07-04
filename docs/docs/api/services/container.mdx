@@ -1,0 +1,51 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Container
+
+bx2cloud implements primitive container runtime functionality through its `container` resource.
+
+A user is able to create a container based on any image from an OCI compliant registry (e.g. Docker Hub, quay.io) and control the container's lifecycle (start, stop). During creation, a container resource must be attached to a [subnetwork](./networking.mdx#subnetwork) resource and an arbitrary IP from the subnetwork's IP range is allocated.
+
+:::info
+
+As of now, there is *no* caching of image layers and each new container receives it's own completely separate rootfs. Future work should add support for [OverlayFS](https://en.wikipedia.org/wiki/OverlayFS).
+
+:::
+
+:::warning
+
+Registry authentication with credentials (private registries) is *not* supported as of now.
+
+:::
+
+#### Creating a container
+
+<Tabs groupId="interface">
+  <TabItem value="cli" label="CLI">
+  ```sh
+  bx2cloud container create examples/api/container/create-ubuntu.yaml
+  ```
+  ```yaml title="examples/api/container/create-ubuntu.yaml"
+  subnetworkId: 4
+  image: ubuntu:24.04
+  cmd:
+    - /bin/sleep
+    - infinity
+  ```
+  </TabItem>
+  <TabItem value="tf" label="Terraform">
+  ```hcl
+  resource "bx2cloud_container" "my_container" {
+    subnetwork_id = bx2cloud_subnetwork.my_subnetwork.id
+    image         = "ubuntu:24.04"
+    cmd           = ["/bin/sleep", "infinity"]
+    status        = "running"
+  }
+  ```
+  </TabItem>
+</Tabs>

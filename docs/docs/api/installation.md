@@ -12,7 +12,8 @@ Installing bx2cloud API can be done in multiple ways:
 
 ### Requirements
 
-- The API supports running only on Linux, since most of the functionality depends on it (such as linux namespaces or networking).
+- The API supports running only on Linux, since most of the functionality depends on it (such as linux namespaces or networking). Linux specific requirements include:
+  - iptables
 - It also requires root privileges (to create linux namespaces, set up network routes, enable certain sysctl options).
 
 ## 1. Binary download
