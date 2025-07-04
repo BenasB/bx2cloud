@@ -22,6 +22,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: docs/
+
       - name: Install Task
         uses: arduino/setup-task@v2
         with:
