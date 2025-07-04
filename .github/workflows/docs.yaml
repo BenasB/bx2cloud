@@ -30,6 +30,9 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download Go tools packages
+        run: go mod download
+        working-directory: tools/
       - name: Generate terraform provider docs
         run: task tf-docs-generate
 
@@ -41,7 +44,7 @@ jobs:
       - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: docs/build
 
   deploy:
     name: Deploy to GitHub Pages
