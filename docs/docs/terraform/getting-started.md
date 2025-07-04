@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Getting started
 
-Firstly, [install](./installation.md) the bx2cloud Terraform provider.
+Firstly, [install](./installation.mdx) the bx2cloud Terraform provider.
 
 Make sure you have a running [bx2cloud API](../api/installation.md) instance.
 
