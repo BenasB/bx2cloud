@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 The bx2cloud Terraform provider is not hosted on the public Terraform registry (registry.terraform.io) as of yet, but it's possible to install the provider binary manually.
 
-1. Firstly, download the provider binary for your OS and architecture from the GitHub Releases. WIP 🚧
+1. Firstly, download the provider binary for your OS and architecture from [GitHub releases](https://github.com/BenasB/bx2cloud/releases). Terraform provider builds start with `terraform-provider-bx2cloud_`.
 
 2. Determine your [implied Terraform local mirror directory](https://developer.hashicorp.com/terraform/cli/config/config-file#implied-local-mirror-directories)
 <Tabs groupId="operating-systems">
@@ -28,4 +28,4 @@ The bx2cloud Terraform provider is not hosted on the public Terraform registry (
 
 > terraform.d/plugins/local/benasb/bx2cloud/\<version\>/\<os\>_\<arch\>
 
-4. Place the downloaded binary into the newly created directory and make sure that it is named as `terraform-provider_bx2cloud`. A suffix `.exe` is required if you are on Windows.
+4. Place the downloaded binary into the newly created directory and make sure that it is named as `terraform-provider-bx2cloud`. A suffix `.exe` is required if you are on Windows.

@@ -18,7 +18,7 @@ Installing bx2cloud API can be done in multiple ways:
 
 ### 1. Binary download
 
-It's possible to download a pre-built binary of the API from GitHub releases. WIP 🚧
+It's possible to download a pre-built binary of the API from [GitHub releases](https://github.com/BenasB/bx2cloud/releases). API builds start with `bx2cloud-api_`.
 
 ### 2. Container image
 

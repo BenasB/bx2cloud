@@ -11,7 +11,7 @@ Installing bx2cloud CLI can be done in multiple ways:
 
 ### 1. Binary download
 
-It's possible to download a pre-built binary of the CLI from GitHub releases. WIP 🚧. Name it `bx2cloud` and place it somewhere on your `PATH`.
+It's possible to download a pre-built binary of the CLI from [GitHub releases](https://github.com/BenasB/bx2cloud/releases). CLI builds start with `bx2cloud_`. Name it `bx2cloud` and place it somewhere on your `PATH`.
 
 ### 2. Building from source
 
