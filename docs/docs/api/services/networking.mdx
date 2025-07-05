@@ -1,0 +1,64 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Networking
+
+bx2cloud implements primitive virtual public cloud (VPC) networking functionality through its `network` and `subnetwork` resources.
+
+### Network
+
+A network is a resource representing a logical network where compute resources can be placed. It is isolated, so resources on one network do not have connectivity with resources on another network. A network is implemented as a linux network namespace. It handles routing between subnetworks (see below) and additionaly handles source NAT and provides connectivity to the host's interfaces.
+
+#### Creating a network
+
+<Tabs groupId="interface">
+  <TabItem value="cli" label="CLI">
+  ```sh
+  bx2cloud network create examples/api/network/create.yaml
+  ```
+  ```yaml title="examples/api/network/create.yaml"
+  internetAccess: true
+  ```
+  </TabItem>
+  <TabItem value="tf" label="Terraform">
+  ```hcl
+  resource "bx2cloud_network" "my_network" {
+    internet_access = true
+  }
+  ```
+  </TabItem>
+</Tabs>
+
+
+
+### Subnetwork
+
+Within a network, a subnetwork resource can be defined. A subnetwork represents a range of IPs (expressed in [CIDR](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing) notation) that compute resources can use. It is implemented as a linux bridge interface in the network's linux network namespace. 
+
+The network resource can be treated as an L3 router which connects multiple L2 switches (subnetwork resources).
+
+#### Creating a subnetwork
+
+<Tabs groupId="interface">
+  <TabItem value="cli" label="CLI">
+  ```sh
+  bx2cloud subnetwork create examples/api/subnetwork/create.yaml
+  ```
+  ```yaml title="examples/api/subnetwork/create.yaml"
+  networkId: 4
+  cidr: 10.0.42.0/24
+  ```
+  </TabItem>
+  <TabItem value="tf" label="Terraform">
+  ```hcl
+  resource "bx2cloud_subnetwork" "my_subnetwork" {
+    network_id = bx2cloud_network.my_network.id
+    cidr       = "10.0.42.0/24"
+  }
+  ```
+  </TabItem>
+</Tabs>
