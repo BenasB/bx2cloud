@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 bx2cloud implements primitive container runtime functionality through its `container` resource.
 
-A user is able to create a container based on any image from an OCI compliant registry (e.g. Docker Hub, quay.io) and control the container's lifecycle (start, stop). During creation, a container resource must be attached to a [subnetwork](./networking.mdx#subnetwork) resource and an arbitrary IP from the subnetwork's IP range is allocated.
+A user is able to create a container based on any image from an OCI compliant registry (e.g. Docker Hub, quay.io) and control the container's lifecycle (start, stop). During creation, a container resource must be attached to a [subnetwork](./networking.mdx#subnetwork) resource and an arbitrary IP from the subnetwork's IP range is allocated. Container state is stored in `/var/run/bx2cloud` and rootfs'es are stored in `/var/lib/bx2cloud`.
 
 :::info
 
