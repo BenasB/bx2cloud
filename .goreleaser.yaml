@@ -36,13 +36,8 @@ builds:
     goarch: [amd64, arm64]
 
 archives:
-  - formats: [tar.gz]
-    ids: [api, cli, terraform-provider]
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    allow_different_binary_count: true
-    format_overrides:
-      - goos: windows
-        formats: [zip]
+  - formats: [binary]
+    name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 changelog:
   use: git
