@@ -39,6 +39,7 @@ archives:
   - formats: [tar.gz]
     ids: [api, cli, terraform-provider]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    allow_different_binary_count: true
     format_overrides:
       - goos: windows
         formats: [zip]
