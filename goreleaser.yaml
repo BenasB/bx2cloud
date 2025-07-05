@@ -1,0 +1,32 @@
+project_name: bx2cloud
+release:
+  github:
+    owner: BenasB
+    name: bx2cloud
+
+builds:
+  - id: api
+    main: ./cmd/bx2cloud-api
+    binary: bx2cloud-api
+    goos: [linux]
+    goarch: [amd64, arm64]
+
+  - id: cli
+    main: ./cmd/bx2cloud
+    binary: bx2cloud
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+  - id: terraform-provider
+    main: ./cmd/terraform-provider-bx2cloud
+    binary: terraform-provider-bx2cloud
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - format: tar.gz
+    ids: [api, cli, terraform-provider]
+
+changelog:
+  use: git
+
