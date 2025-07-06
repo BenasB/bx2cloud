@@ -2,30 +2,72 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+*'
+    # TEMP
+    # tags:
+    #   - 'v[0-9]+.[0-9]+.[0-9]+*'
 
 permissions:
   contents: write
 
 jobs:
-  goreleaser:
+  build:
+    name: Build Binaries
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cmd: ["bx2cloud", "bx2cloud-api", "terraform-provider-bx2cloud"]
+        goos: ["linux", "windows", "darwin"]
+        goarch: ["amd64", "arm64"]
+        exclude:
+          - cmd: bx2cloud-api
+            goos: windows
+          - cmd: bx2cloud-api
+            goos: darwin
+        include:
+          - goos: windows
+            ext: .exe
+          - cmd: bx2cloud-api
+            goos: linux
+            goarch: amd64
+            env:
+              CGO_ENABLED: 1
+          - cmd: bx2cloud-api
+            goos: linux
+            goarch: arm64
+            env:
+              CGO_ENABLED: 1
+              CC: aarch64-linux-gnu-gcc
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Install ARM64 cross-compiler
-        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: "~> v2"
-          args: release --clean
+
+      - name: Get the version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Install cross-compiler for ARM64
+        if: matrix.env.CC == 'aarch64-linux-gnu-gcc'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.env.CGO_ENABLED || 0 }}
+          CC: ${{ matrix.env.CC }}
+        run: |
+          go build -v -trimpath -ldflags="-s -w" -o "dist/${{ matrix.cmd }}_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.arch }}${{ matrix.ext }}" ./cmd/${{ matrix.cmd }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.cmd }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/${{ matrix.cmd }}_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.arch }}${{ matrix.ext }}
+          if-no-files-found: error
+          
