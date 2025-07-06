@@ -2,12 +2,8 @@ name: Release
 
 on:
   push:
-    # TEMP
-    # tags:
-    #   - 'v[0-9]+.[0-9]+.[0-9]+*'
-
-permissions:
-  contents: write
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
   build:
@@ -62,12 +58,36 @@ jobs:
           CGO_ENABLED: ${{ matrix.env.CGO_ENABLED || 0 }}
           CC: ${{ matrix.env.CC }}
         run: |
-          go build -v -trimpath -ldflags="-s -w" -o "dist/${{ matrix.cmd }}_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.arch }}${{ matrix.ext }}" ./cmd/${{ matrix.cmd }}
+          go build -v -trimpath -ldflags="-s -w" -o "dist/${{ matrix.cmd }}_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/${{ matrix.cmd }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.cmd }}-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/${{ matrix.cmd }}_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.arch }}${{ matrix.ext }}
+          name: bin-${{ matrix.cmd }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/${{ matrix.cmd }}_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}
           if-no-files-found: error
-          
+
+  release:
+    name: Release to GitHub Releases
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: build
+    steps: 
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: bin-*
+          merge-multiple: true
+
+      - name: List downloaded binaries
+        run: ls -R release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
