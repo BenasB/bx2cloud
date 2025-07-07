@@ -1,0 +1,7 @@
+ARG BINARY_NAME=bx2cloud
+
+FROM alpine:3
+
+COPY ${BINARY_NAME} /app
+
+ENTRYPOINT ["/app/${BINARY_NAME}"]
