@@ -179,7 +179,6 @@ jobs:
 
   release:
     name: Release to GitHub Releases
-    if: false #TEMP
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -20,9 +20,19 @@ Installing bx2cloud API can be done in multiple ways:
 
 It's possible to download a pre-built binary of the API from [GitHub releases](https://github.com/BenasB/bx2cloud/releases). API builds start with `bx2cloud-api_`.
 
+:::warning
+
+Pre-built API binaries on GitHub releases are linked with glibc, so running them on a system that does not have it (e.g. Alpine uses musl instead of glibc) will not work. For more details refer to "3. Building from source".
+
+:::
+
 ### 2. Container image
 
-A container image is available on Docker Hub. WIP 🚧
+A container image is available on [Docker Hub](https://hub.docker.com/r/benasbudrys/bx2cloud-api).
+
+```sh
+docker run -p 8080:8080 --privileged benasbudrys/bx2cloud-api
+```
 
 ### 3. Building from source
 
