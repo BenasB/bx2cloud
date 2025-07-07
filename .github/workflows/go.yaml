@@ -78,6 +78,10 @@ jobs:
         goarch: ["amd64", "arm64"]
         include:
           - cmd: bx2cloud
+            dockerfile: Dockerfile.cli
+          - cmd: bx2cloud-api
+            dockerfile: Dockerfile.api
+          - cmd: bx2cloud
             image_name: bx2cloud-cli
           - cmd: bx2cloud-api 
             # API requires CGO when building, so binary built on ubuntu (glibc) fails to run on alpine (musl)
@@ -119,11 +123,8 @@ jobs:
           platforms: ${{ matrix.goos }}/${{ matrix.goarch }}
           tags: ${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image_name || matrix.cmd }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-          build-args: |
-            BINARY_NAME=${{ matrix.cmd }}
-            ${{ matrix.base && format('BASE={0}', matrix.base) }}
           context: bin/
-          file: Dockerfile
+          file: ${{ matrix.dockerfile }}
 
       - name: Create file for digest
         run: |

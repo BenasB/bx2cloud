@@ -1,0 +1,5 @@
+FROM alpine:3
+
+COPY bx2cloud /app/bx2cloud
+
+ENTRYPOINT [ "/app/bx2cloud" ]
