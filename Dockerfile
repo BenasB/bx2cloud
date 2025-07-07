@@ -3,4 +3,6 @@ ARG BINARY_NAME=bx2cloud
 
 COPY ${BINARY_NAME} /app
 
-ENTRYPOINT ["/app/${BINARY_NAME}"]
+RUN printf "#!/bin/sh\nexec /app${BINARY_NAME}" > /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
