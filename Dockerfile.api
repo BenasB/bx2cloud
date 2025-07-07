@@ -4,6 +4,6 @@ RUN apt-get update && apt-get install -y \
     iptables \
     ca-certificates
 
-COPY bx2cloud-api /app/bx2cloud-api
+COPY --chmod=755 bx2cloud-api /app/bx2cloud-api
 
 ENTRYPOINT [ "/app/bx2cloud-api" ]
