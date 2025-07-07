@@ -26,7 +26,21 @@ func Run(args []string) exits.ExitCode {
 	command := args[0]
 	args = args[1:]
 
-	conn, err := newConn()
+	target := "localhost:8080"
+	if command == "-t" {
+		target = args[0]
+		args = args[1:]
+
+		if len(args) < 1 {
+			fmt.Fprintf(os.Stderr, "Missing command\n")
+			return exits.MISSING_COMMAND
+		}
+
+		command = args[0]
+		args = args[1:]
+	}
+
+	conn, err := newConn(target)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exits.SERVER_ERROR
@@ -307,9 +321,9 @@ func Run(args []string) exits.ExitCode {
 	return exits.SUCCESS
 }
 
-func newConn() (*grpc.ClientConn, error) {
+func newConn(target string) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	conn, err := grpc.NewClient("localhost:8080", opts...)
+	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, err
 	}

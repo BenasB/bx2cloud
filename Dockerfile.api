@@ -1,26 +1,9 @@
-# syntax=docker/dockerfile:1
+FROM ubuntu:24.04
 
-FROM golang:1.24 AS build-stage
+RUN apt-get update && apt-get install -y \
+    iptables \
+    ca-certificates
 
-WORKDIR /app
+COPY --chmod=755 bx2cloud-api /app/bx2cloud-api
 
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY cmd/api/ cmd/api
-COPY internal/api/ internal/api/
-
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bx2cloud-api cmd/api/main.go
-
-FROM build-stage AS run-test-stage
-RUN go test -v ./...
-
-FROM alpine:3 AS build-release-stage
-
-WORKDIR /
-
-COPY --from=build-stage /bx2cloud-api /bx2cloud-api
-
-EXPOSE 8080
-
-ENTRYPOINT ["/bx2cloud-api"]
+ENTRYPOINT [ "/app/bx2cloud-api" ]

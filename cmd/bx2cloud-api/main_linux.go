@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	address := "localhost:8080"
+	address := ":8080" // TODO: Make this configurable
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
