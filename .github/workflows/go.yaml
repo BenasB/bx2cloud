@@ -167,10 +167,19 @@ jobs:
       - name: Get the version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
 
+      - name: Retrieve container image tags
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+
       - name: Create manifest index and push
         working-directory: digests
         run: |
-          docker buildx imagetools create -t ${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:${{ env.VERSION }} \
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}@sha256:%s ' *)
 
       - name: Inspect image
