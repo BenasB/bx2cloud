@@ -187,7 +187,6 @@ jobs:
   release:
     name: Release to GitHub Releases
     runs-on: ubuntu-latest
-    if: false # TEMP
     permissions:
       contents: write
     needs: container-images-index
