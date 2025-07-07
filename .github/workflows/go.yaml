@@ -79,6 +79,9 @@ jobs:
         include:
           - cmd: bx2cloud
             image_name: bx2cloud-cli
+          - cmd: bx2cloud-api 
+            # API requires CGO when building, so binary built on ubuntu (glibc) fails to run on alpine (musl)
+            base: ubuntu:24.04
     env:
       DOCKER_BUILD_SUMMARY: false
     steps:
@@ -118,6 +121,7 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           build-args: |
             BINARY_NAME=${{ matrix.cmd }}
+            ${{ matrix.base && format('BASE={0}', matrix.base) }}
           context: bin/
           file: Dockerfile
 

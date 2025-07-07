@@ -1,8 +1,15 @@
-FROM alpine:3
+ARG BASE=alpine:3
+FROM ${BASE}
 ARG BINARY_NAME=bx2cloud
 
-COPY ${BINARY_NAME} /app
+RUN apt-get update && apt-get install -y \
+    iptables \
+    ca-certificates
 
-RUN printf "#!/bin/sh\nexec /app${BINARY_NAME}" > /entrypoint.sh
+COPY ${BINARY_NAME} /app/${BINARY_NAME}
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Since ARG can't be substituted in ENTRYPOINT
+RUN printf "#!/bin/sh\nexec /app/${BINARY_NAME}" > /entrypoint.sh \
+    && chmod +x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]
