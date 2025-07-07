@@ -1,6 +1,5 @@
-ARG BINARY_NAME=bx2cloud
-
 FROM alpine:3
+ARG BINARY_NAME=bx2cloud
 
 COPY ${BINARY_NAME} /app
 

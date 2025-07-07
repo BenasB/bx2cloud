@@ -165,7 +165,7 @@ jobs:
       - name: Create manifest index and push
         working-directory: digests
         run: |
-          docker buildx imagetools create -t ${{ env.VERSION }} \
+          docker buildx imagetools create -t ${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:${{ env.VERSION }} \
             $(printf '${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}@sha256:%s ' *)
 
       - name: Inspect image
