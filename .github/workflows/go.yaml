@@ -164,9 +164,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Get the version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-
       - name: Retrieve container image tags
         id: meta
         uses: docker/metadata-action@v5
@@ -190,6 +187,7 @@ jobs:
   release:
     name: Release to GitHub Releases
     runs-on: ubuntu-latest
+    if: false # TEMP
     permissions:
       contents: write
     needs: container-images-index
