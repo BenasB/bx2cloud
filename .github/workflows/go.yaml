@@ -28,13 +28,11 @@ jobs:
           - goos: windows
             ext: .exe
           - cmd: bx2cloud-api
-            env:
-              CGO_ENABLED: 1
+            cgo_enabled: 1
           - cmd: bx2cloud-api
             goos: linux
             goarch: arm64
-            env:
-              CC: aarch64-linux-gnu-gcc
+            cc: aarch64-linux-gnu-gcc
           - cmd: bx2cloud-api
             version_package: "github.com/BenasB/bx2cloud/internal/api/introspection"
           - cmd: bx2cloud
@@ -52,7 +50,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
 
       - name: Install cross-compiler for ARM64
-        if: matrix.env.CC == 'aarch64-linux-gnu-gcc'
+        if: matrix.cc == 'aarch64-linux-gnu-gcc'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
@@ -61,8 +59,8 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: ${{ matrix.env.CGO_ENABLED || 0 }}
-          CC: ${{ matrix.env.CC }}
+          CGO_ENABLED: ${{ matrix.cgo_enabled || 0 }}
+          CC: ${{ matrix.cc }}
         run: |
           go build -v -trimpath \
             -ldflags="-s -w ${{ matrix.version_package && format('-X {0}.version={1}', matrix.version_package, env.VERSION) }}" \
