@@ -15,3 +15,9 @@ You can interact with the API through:
 - Your own gRPC client
 
 All of the applications are written in Go.
+
+:::info
+
+This is very much a Work-in-Progress. Features are not expected to be stable for the time being.
+
+:::
