@@ -9,6 +9,7 @@ import (
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/cli/container"
 	"github.com/BenasB/bx2cloud/internal/cli/exits"
+	"github.com/BenasB/bx2cloud/internal/cli/introspection"
 	"github.com/BenasB/bx2cloud/internal/cli/network"
 	"github.com/BenasB/bx2cloud/internal/cli/subnetwork"
 	"google.golang.org/grpc"
@@ -50,6 +51,10 @@ func Run(args []string) exits.ExitCode {
 	var cmdErrCode exits.ExitCode
 	var cmdErr error
 	switch command {
+	case "version":
+		client := pb.NewIntrospectionServiceClient(conn)
+		introspection.Version(client)
+		return exits.SUCCESS
 	case "network":
 		if len(args) == 0 {
 			fmt.Fprintf(os.Stderr, "Missing subcommand\n")

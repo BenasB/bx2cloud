@@ -1,0 +1,14 @@
+syntax = "proto3";
+package bx2cloud;
+
+option go_package = "github.com/BenasB/bx2cloud/internal/api/pb";
+
+import "google/protobuf/empty.proto";
+
+service IntrospectionService {
+    rpc Get (google.protobuf.Empty) returns (IntrospectionResponse);
+}
+
+message IntrospectionResponse {
+    string version = 1;
+}
