@@ -6,6 +6,7 @@ import (
 
 	"github.com/BenasB/bx2cloud/internal/api/container"
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
+	"github.com/BenasB/bx2cloud/internal/api/introspection"
 	"github.com/BenasB/bx2cloud/internal/api/network"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	"github.com/BenasB/bx2cloud/internal/api/subnetwork"
@@ -51,6 +52,7 @@ func main() {
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
 	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator, ipamRepository))
 	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator, imagePuller, ipamRepository))
+	pb.RegisterIntrospectionServiceServer(grpcServer, introspection.NewService())
 
 	log.Printf("Starting server on %s", address)
 	if err := grpcServer.Serve(lis); err != nil {

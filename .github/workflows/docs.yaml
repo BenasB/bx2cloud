@@ -6,11 +6,16 @@ on:
       - main
     paths:
       - docs/**
+      - internal/api/pb/**
+      # The TF provider docs may change in other ways (e.g. schema), but this should be ok in most cases
+      - internal/terraform/examples/**
   pull_request:
     branches:
       - main
     paths:
       - docs/**
+      - internal/api/pb/**
+      - internal/terraform/examples/**
     
 
 jobs:
