@@ -1,161 +1,97 @@
 package subnetwork
 
 import (
-	"context"
 	"fmt"
 	"io"
-	"net"
 	"os"
-	"text/tabwriter"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"gopkg.in/yaml.v3"
+	"github.com/BenasB/bx2cloud/internal/cli/common"
+	"github.com/BenasB/bx2cloud/internal/cli/exits"
+	"google.golang.org/grpc"
 )
 
-func newWriter() *tabwriter.Writer {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "id\tnetwork_id\tcidr\n")
-	return w
-}
+var Commands = []*common.CliCommand{
+	common.NewCliSubcommand(
+		"subnetwork",
+		[]*common.CliCommand{
+			common.NewCliCommand(
+				"list",
+				"Retrieves all existing subnetworks",
+				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+					client := pb.NewSubnetworkServiceClient(conn)
+					if err := List(client); err != nil {
+						return exits.SUBNETWORK_ERROR, err
+					}
+					return exits.SUCCESS, nil
+				},
+			),
+			common.NewCliCommand(
+				"get",
+				"Retrieves a specified subnetwork",
+				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+					client := pb.NewSubnetworkServiceClient(conn)
+					if err := List(client); err != nil {
+						return exits.SUBNETWORK_ERROR, err
+					}
+					return exits.SUCCESS, nil
+				},
+			),
+			common.NewCliCommand(
+				"delete",
+				"Deletes a specified subnetwork",
+				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+					client := pb.NewSubnetworkServiceClient(conn)
+					id, exitCode, err := common.ParseUint32Arg(&args)
+					if err != nil {
+						return exitCode, fmt.Errorf("failed to parse 'id' argument: %w", err)
+					}
 
-func print(w *tabwriter.Writer, subnetwork *pb.Subnetwork) {
-	cidr := fmt.Sprintf("%d.%d.%d.%d/%d",
-		byte(subnetwork.Address>>24),
-		byte(subnetwork.Address>>16),
-		byte(subnetwork.Address>>8),
-		byte(subnetwork.Address),
-		subnetwork.PrefixLength)
+					if err := Delete(client, id); err != nil {
+						return exits.SUBNETWORK_ERROR, err
+					}
+					return exits.SUCCESS, nil
+				},
+			),
+			common.NewCliCommand(
+				"create",
+				"Creates a new subnetwork resource",
+				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+					client := pb.NewSubnetworkServiceClient(conn)
 
-	fmt.Fprintf(w, "%d\t%d\t%s\n", subnetwork.Id, subnetwork.NetworkId, cidr)
-}
+					yamlBytes, err := io.ReadAll(os.Stdin)
+					if err != nil {
+						return exits.SUBNETWORK_ERROR, err
+					}
 
-func List(client pb.SubnetworkServiceClient) error {
-	stream, err := client.List(context.Background(), &emptypb.Empty{})
-	if err != nil {
-		return err
-	}
+					if err := Create(client, yamlBytes); err != nil {
+						return exits.SUBNETWORK_ERROR, err
+					}
+					return exits.SUCCESS, nil
+				},
+			),
+			common.NewCliCommand(
+				"update",
+				"Updates an existing network resource",
+				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+					client := pb.NewSubnetworkServiceClient(conn)
 
-	w := newWriter()
-	defer w.Flush()
-	for {
-		subnetwork, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		print(w, subnetwork)
-	}
+					yamlBytes, err := io.ReadAll(os.Stdin)
+					if err != nil {
+						return exits.SUBNETWORK_ERROR, err
+					}
 
-	return nil
-}
+					id, exitCode, err := common.ParseUint32Arg(&args)
+					if err != nil {
+						return exitCode, fmt.Errorf("failed to parse 'id' argument: %w", err)
+					}
 
-func Get(client pb.SubnetworkServiceClient, id uint32) error {
-	subnetwork, err := client.Get(context.Background(), &pb.SubnetworkIdentificationRequest{
-		Id: id,
-	})
-	if err != nil {
-		return err
-	}
-
-	w := newWriter()
-	defer w.Flush()
-	print(w, subnetwork)
-
-	return nil
-}
-
-func Delete(client pb.SubnetworkServiceClient, id uint32) error {
-	_, err := client.Delete(context.Background(), &pb.SubnetworkIdentificationRequest{
-		Id: id,
-	})
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Successfully deleted %d\n", id)
-
-	return nil
-}
-
-func Create(client pb.SubnetworkServiceClient, yamlBytes []byte) error {
-	input := &subnetworkCreation{}
-	if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
-		return err
-	}
-
-	if err := input.Validate(); err != nil {
-		return err
-	}
-
-	_, ipNet, err := net.ParseCIDR(input.Cidr)
-	if err != nil {
-		return fmt.Errorf("Could not parse CIDR: %v", err)
-	}
-
-	ip := ipNet.IP.To4()
-	if ip == nil {
-		return fmt.Errorf("Could not convert the ip to an IPv4 ip")
-	}
-	address := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
-	prefixLength, _ := ipNet.Mask.Size()
-
-	req := &pb.SubnetworkCreationRequest{
-		NetworkId:    input.NetworkId,
-		Address:      address,
-		PrefixLength: uint32(prefixLength),
-	}
-
-	resp, err := client.Create(context.Background(), req)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Successfully created %d\n", resp.Id)
-
-	return nil
-}
-
-func Update(client pb.SubnetworkServiceClient, id uint32, yamlBytes []byte) error {
-	input := &subnetworkCreation{}
-	if err := yaml.Unmarshal(yamlBytes, &input); err != nil {
-		return err
-	}
-
-	if err := input.Validate(); err != nil {
-		return err
-	}
-
-	_, ipNet, err := net.ParseCIDR(input.Cidr)
-	if err != nil {
-		return fmt.Errorf("Could not parse CIDR: %v", err)
-	}
-
-	ip := ipNet.IP.To4()
-	if ip == nil {
-		return fmt.Errorf("Could not convert the ip to an IPv4 ip")
-	}
-	address := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
-	prefixLength, _ := ipNet.Mask.Size()
-
-	req := &pb.SubnetworkUpdateRequest{
-		Identification: &pb.SubnetworkIdentificationRequest{
-			Id: id,
+					if err := Update(client, id, yamlBytes); err != nil {
+						return exits.SUBNETWORK_ERROR, err
+					}
+					return exits.SUCCESS, nil
+				},
+			),
 		},
-		Update: &pb.SubnetworkCreationRequest{
-			Address:      address,
-			PrefixLength: uint32(prefixLength),
-		},
-	}
-
-	resp, err := client.Update(context.Background(), req)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Successfully updated %d\n", resp.Id)
-
-	return nil
+	),
 }

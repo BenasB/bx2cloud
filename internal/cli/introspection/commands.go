@@ -1,23 +1,20 @@
 package introspection
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/BenasB/bx2cloud/internal/api/pb"
-	"google.golang.org/protobuf/types/known/emptypb"
+	"github.com/BenasB/bx2cloud/internal/cli/common"
+	"github.com/BenasB/bx2cloud/internal/cli/exits"
+	"google.golang.org/grpc"
 )
 
-var version = "dev"
-
-func Version(client pb.IntrospectionServiceClient) {
-	fmt.Printf("CLI version: %s\n", version)
-
-	resp, err := client.Get(context.Background(), &emptypb.Empty{})
-	if err != nil {
-		fmt.Printf("API version: failed to determine\n")
-		return
-	}
-
-	fmt.Printf("API version: %s\n", resp.Version)
+var Commands = []*common.CliCommand{
+	common.NewCliCommand(
+		"version",
+		"Prints out CLI and API version information",
+		func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+			client := pb.NewIntrospectionServiceClient(conn)
+			Version(client)
+			return exits.SUCCESS, nil
+		},
+	),
 }

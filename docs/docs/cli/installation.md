@@ -18,10 +18,10 @@ It's possible to download a pre-built binary of the CLI from [GitHub releases](h
 
 A container image is available on [Docker Hub](https://hub.docker.com/r/benasbudrys/bx2cloud-cli).
 
-As an example, running `bx2cloud container list` can be achieved with:
+As an example, try running `bx2cloud version`:
 
 ```sh
-docker run --rm benasbudrys/bx2cloud-cli -t <api-ip>:<api-port> container list
+docker run --rm benasbudrys/bx2cloud-cli -t <api-ip>:<api-port> version
 ```
 
 ### 3. Building from source
