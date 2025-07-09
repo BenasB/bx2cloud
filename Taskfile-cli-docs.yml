@@ -1,0 +1,149 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  cli-docs-generate:
+    desc: Generate CLI documentation in docs/
+    env:
+      OUT_DIR: ./docs/docs/cli/reference
+    cmds:
+      - |
+        set -euo pipefail
+
+        mkdir -p "$OUT_DIR"
+
+        function generate_docs() {
+          local path=("$@")
+          local filename="${path[*]}"
+          local cmd_name="${path[*]}"
+          local help_output
+
+          help_output=$(go run ./cmd/bx2cloud "${path[@]}" -h 2>&1)
+
+          local subcmds
+          subcmds=$(echo "$help_output" | awk '
+            /subcommands:$/ { in_section=1; next }
+            /^[^[:space:]]+.*:$/ { in_section=0 }
+            in_section { gsub(/^[[:space:]]+/, ""); print }
+          ')
+
+          if [[ ${#path[@]} -eq 0 ]]; then
+            echo "Extracting top-level help: bx2cloud"
+            echo "$help_output" > "$OUT_DIR/global.md"
+          elif [[ -z "$subcmds" ]]; then
+            local file_path="${OUT_DIR}/$(echo "${filename}" | tr ' ' '_').md"
+            echo "Extracting help for command: bx2cloud ${cmd_name}"
+            echo "$help_output" > "$file_path"
+          fi
+
+          while read -r sub; do
+            [[ -z "$sub" ]] && continue
+            generate_docs "${path[@]}" "$sub"
+          done <<< "$subcmds"
+        }
+
+        generate_docs
+      - |
+        set -euo pipefail
+
+        generate_flags_table() {
+          local source_file="$1"
+          local flags_block
+          flags_block=$(awk '/^flags:/{found=1; next} found' "$source_file")
+          if [[ -n "$flags_block" && "$(echo "$flags_block" | xargs | tr '[:upper:]' '[:lower:]')" != "none" ]]; then
+            echo "## Flags"
+            echo ""
+            echo "| Flag | Type | Description | Default |"
+            echo "|------|------|-------------|---------|"
+            printf "%s\n" "$flags_block" | awk '
+              function output_flag() {
+                  if (name == "") return;
+                  default_val = "";
+                  if (match(description, /\(default "([^"]*)"\)/, m)) {
+                      default_val = m[1];
+                      gsub(/\(default "[^"]*"\)/, "", description);
+                  } else if (match(description, /\(default ([^)]*)\)/, m)) {
+                      default_val = m[1];
+                      gsub(/\(default [^)]*\)/, "", description);
+                  }
+                  gsub(/^[ \t]+|[ \t]+$/, "", description);
+                  gsub(/<[^>]+>/, "`&`", description);
+                  type_cell = (type == "") ? "" : "`" type "`";
+                  printf "| `%s` | %s | %s | %s |\n", name, type_cell, description, default_val;
+              }
+              /^[[:space:]]*-/ {
+                  output_flag();
+                  name = $1;
+                  type = (NF > 1) ? $2 : "";
+                  description = "";
+                  next;
+              }
+              /^[[:space:]]{2,}/ {
+                  line_content = $0;
+                  gsub(/^[ \t]+/, "", line_content);
+                  description = (description == "") ? line_content : description " " line_content;
+              }
+              END { output_flag(); }
+            '
+          fi
+        }
+
+        for file in "$OUT_DIR"/*.md; do
+          echo "Processing $file..."
+          {
+            if [[ "$(basename "$file")" == "global.md" ]]; then
+              echo "---"
+              echo "title: \"Global flags\""
+              echo "sidebar_position: 1"
+              echo "custom_edit_url: null"
+              echo "---"
+              echo "# Global flags"
+              echo ""
+              echo "These flags can be used with any command."
+              echo ""
+              echo "## Usage"
+              echo ""
+              echo "\`\`\`"
+              echo "bx2cloud -t 127.0.0.1:9876 version"
+              echo "\`\`\`"
+              echo ""
+            else
+              content=$(<"$file")
+              cmd_line=$(echo "$content" | grep -m 1 '^bx2cloud .*:') || {
+                echo "❌ Error: Could not find 'bx2cloud command:' line in '$file'. Aborting." >&2
+                exit 1
+              }
+              cmd=$(echo "$cmd_line" | cut -d':' -f1)
+              desc=$(echo "$cmd_line" | cut -d':' -f2- | sed 's/^ *//')
+              usage_line=$(echo "$content" | grep '^usage:' || echo "")
+              usage_command=""
+              if [[ -n "$usage_line" ]]; then
+                usage_command=$(echo "$usage_line" | cut -d':' -f2- | sed 's/^ *//')
+              fi
+              echo "---"
+              echo "title: \"${cmd#bx2cloud }\""
+              echo "custom_edit_url: null"
+              echo "---"
+              echo "# $cmd"
+              echo ""
+              echo "$desc"
+              echo ""
+              if [[ -n "$usage_command" ]]; then
+                echo "## Usage"
+                echo ""
+                echo "\`\`\`"
+                echo "$usage_command"
+                echo "\`\`\`"
+                echo ""
+              fi
+            fi
+            generate_flags_table "$file"
+          } > "$file.tmp"
+          if [[ -s "$file.tmp" ]]; then
+              mv "$file.tmp" "$file"
+          else
+              rm -f "$file.tmp"
+          fi
+        done
+      - "echo '{\"position\": 99, \"label\": \"Reference\", \"link\": { \"type\": \"generated-index\", \"title\": \"CLI reference\", \"slug\": \"cli/reference\" }}' > $OUT_DIR/_category_.json"
