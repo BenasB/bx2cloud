@@ -10,6 +10,7 @@ import (
 	"github.com/BenasB/bx2cloud/internal/cli/exits"
 	"github.com/BenasB/bx2cloud/internal/cli/introspection"
 	"github.com/BenasB/bx2cloud/internal/cli/network"
+	"github.com/BenasB/bx2cloud/internal/cli/subnetwork"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -25,6 +26,7 @@ func Run(args []string) exits.ExitCode {
 	subcommands := make([]*common.CliCommand, 0)
 	subcommands = append(subcommands, introspection.Commands...)
 	subcommands = append(subcommands, network.Commands...)
+	subcommands = append(subcommands, subnetwork.Commands...)
 	subcommands = append(subcommands, container.Commands...)
 	mainCommand := common.NewCliSubcommand(globalFlagSet.Name(), subcommands)
 
