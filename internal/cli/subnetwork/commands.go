@@ -18,6 +18,7 @@ var Commands = []*common.CliCommand{
 			common.NewCliCommand(
 				"list",
 				"Retrieves all existing subnetworks",
+				"",
 				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
 					client := pb.NewSubnetworkServiceClient(conn)
 					if err := List(client); err != nil {
@@ -29,6 +30,7 @@ var Commands = []*common.CliCommand{
 			common.NewCliCommand(
 				"get",
 				"Retrieves a specified subnetwork",
+				"<id>",
 				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
 					client := pb.NewSubnetworkServiceClient(conn)
 					if err := List(client); err != nil {
@@ -40,6 +42,7 @@ var Commands = []*common.CliCommand{
 			common.NewCliCommand(
 				"delete",
 				"Deletes a specified subnetwork",
+				"<id>",
 				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
 					client := pb.NewSubnetworkServiceClient(conn)
 					id, exitCode, err := common.ParseUint32Arg(&args)
@@ -56,6 +59,7 @@ var Commands = []*common.CliCommand{
 			common.NewCliCommand(
 				"create",
 				"Creates a new subnetwork resource",
+				"< file.yaml",
 				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
 					client := pb.NewSubnetworkServiceClient(conn)
 
@@ -73,6 +77,7 @@ var Commands = []*common.CliCommand{
 			common.NewCliCommand(
 				"update",
 				"Updates an existing network resource",
+				"< file.yaml",
 				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
 					client := pb.NewSubnetworkServiceClient(conn)
 

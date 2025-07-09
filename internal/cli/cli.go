@@ -33,7 +33,7 @@ func Run(args []string) exits.ExitCode {
 	globalFlagSet.Usage = func() {
 		common.FprintSubcommands(os.Stderr, globalFlagSet.Name(), subcommands)
 
-		fmt.Fprintf(os.Stderr, "%s flags:\n", globalFlagSet.Name())
+		fmt.Fprintf(os.Stderr, "flags:\n")
 		globalFlagSet.PrintDefaults()
 	}
 	if err := globalFlagSet.Parse(args); err != nil {

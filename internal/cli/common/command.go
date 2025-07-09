@@ -12,19 +12,26 @@ import (
 )
 
 type CliCommand struct {
-	description string
-	flagSet     *flag.FlagSet
-	handler     func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error)
-	subcommands []*CliCommand
+	description    string
+	argDescription string
+	flagSet        *flag.FlagSet
+	handler        func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error)
+	subcommands    []*CliCommand
 }
 
-func NewCliCommand(name string, description string, handler func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error)) *CliCommand {
-	return NewCliCommandWithFlags(name, description, handler, func(fs *flag.FlagSet) {})
+func NewCliCommand(
+	name string,
+	description string,
+	argDescription string,
+	handler func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error),
+) *CliCommand {
+	return NewCliCommandWithFlags(name, description, argDescription, handler, func(fs *flag.FlagSet) {})
 }
 
 func NewCliCommandWithFlags(
 	name string,
 	description string,
+	argDescription string,
 	handler func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error),
 	flagSetUp func(*flag.FlagSet),
 ) *CliCommand {
@@ -33,9 +40,10 @@ func NewCliCommandWithFlags(
 	flagSetUp(flagSet)
 
 	return &CliCommand{
-		description: description,
-		handler:     handler,
-		flagSet:     flagSet,
+		description:    description,
+		argDescription: argDescription,
+		handler:        handler,
+		flagSet:        flagSet,
 	}
 }
 
@@ -55,8 +63,9 @@ func (c *CliCommand) Execute(args []string, conn *grpc.ClientConn, cmdNameChain 
 		fullName := strings.Join(cmdNameChain, " ")
 		if len(c.subcommands) == 0 {
 			fmt.Fprintf(c.flagSet.Output(), "%s: %s\n", fullName, c.description)
+			fmt.Fprintf(c.flagSet.Output(), "usage: %s %s\n", fullName, c.argDescription)
 
-			fmt.Fprintf(c.flagSet.Output(), "%s flags:", fullName)
+			fmt.Fprintf(c.flagSet.Output(), "flags:")
 			hasFlags := false
 			c.flagSet.VisitAll(func(f *flag.Flag) { hasFlags = true })
 			if hasFlags {

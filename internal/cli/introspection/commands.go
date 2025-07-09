@@ -11,6 +11,7 @@ var Commands = []*common.CliCommand{
 	common.NewCliCommand(
 		"version",
 		"Prints out CLI and API version information",
+		"",
 		func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
 			client := pb.NewIntrospectionServiceClient(conn)
 			Version(client)
