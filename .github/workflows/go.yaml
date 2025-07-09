@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
-        # TEMP if: github.event_name == 'push'
+        if: github.event_name == 'push'
         with:
           name: bin-${{ matrix.cmd }}-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/${{ matrix.cmd }}_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}
