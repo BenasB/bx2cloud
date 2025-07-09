@@ -19,9 +19,18 @@ type CliCommand struct {
 }
 
 func NewCliCommand(name string, description string, handler func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error)) *CliCommand {
+	return NewCliCommandWithFlags(name, description, handler, func(fs *flag.FlagSet) {})
+}
+
+func NewCliCommandWithFlags(
+	name string,
+	description string,
+	handler func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error),
+	flagSetUp func(*flag.FlagSet),
+) *CliCommand {
 	flagSet := flag.NewFlagSet(name, flag.ContinueOnError)
 
-	// TODO: Allow to add custom flags
+	flagSetUp(flagSet)
 
 	return &CliCommand{
 		description: description,
@@ -47,12 +56,14 @@ func (c *CliCommand) Execute(args []string, conn *grpc.ClientConn, cmdNameChain 
 		if len(c.subcommands) == 0 {
 			fmt.Fprintf(c.flagSet.Output(), "%s: %s\n", fullName, c.description)
 
+			fmt.Fprintf(c.flagSet.Output(), "%s flags:", fullName)
 			hasFlags := false
 			c.flagSet.VisitAll(func(f *flag.Flag) { hasFlags = true })
 			if hasFlags {
+				fmt.Fprintf(c.flagSet.Output(), "\n")
 				c.flagSet.PrintDefaults()
 			} else {
-				fmt.Fprintf(c.flagSet.Output(), "%s flags: none\n", c.flagSet.Name())
+				fmt.Fprintf(c.flagSet.Output(), " none\n")
 			}
 		} else {
 			FprintSubcommands(c.flagSet.Output(), fullName, c.subcommands)
