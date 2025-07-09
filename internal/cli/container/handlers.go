@@ -128,6 +128,7 @@ func Exec(client pb.ContainerServiceClient, id uint32, args []string) error {
 	}
 	defer term.Restore(termFd, oldState)
 
+	// TODO: #9 container exec not working on Windows Git Bash and Powershell
 	width, height, err := term.GetSize(termFd)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the size of the terminal: %w", err)

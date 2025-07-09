@@ -6,6 +6,7 @@ import (
 
 	"github.com/BenasB/bx2cloud/internal/api/container"
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
+	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/introspection"
 	"github.com/BenasB/bx2cloud/internal/api/network"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
@@ -25,13 +26,13 @@ func main() {
 
 	ipamRepository := ipam.NewMemoryRepository()
 
-	networkRepository := network.NewMemoryRepository(sampleNetworks)
+	networkRepository := network.NewMemoryRepository(make([]*interfaces.NetworkModel, 0))
 	networkConfigurator, err := network.NewNamespaceConfigurator()
 	if err != nil {
 		log.Fatalf("Failed to create the network configurator: %v", err)
 	}
 
-	subnetworkRepository := subnetwork.NewMemoryRepository(sampleSubnetworks)
+	subnetworkRepository := subnetwork.NewMemoryRepository(make([]*interfaces.SubnetworkModel, 0))
 	subnetworkConfigurator := subnetwork.NewBridgeConfigurator(networkConfigurator.GetNetworkNamespaceName, ipamRepository)
 
 	containerRepository, err := container.NewLibcontainerRepository()

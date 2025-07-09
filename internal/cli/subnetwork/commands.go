@@ -33,7 +33,12 @@ var Commands = []*common.CliCommand{
 				"<id>",
 				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
 					client := pb.NewSubnetworkServiceClient(conn)
-					if err := List(client); err != nil {
+					id, exitCode, err := common.ParseUint32Arg(&args)
+					if err != nil {
+						return exitCode, fmt.Errorf("failed to parse 'id' argument: %w", err)
+					}
+
+					if err := Get(client, id); err != nil {
 						return exits.SUBNETWORK_ERROR, err
 					}
 					return exits.SUCCESS, nil
