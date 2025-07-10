@@ -116,22 +116,25 @@ func Create(client pb.ContainerServiceClient, yamlBytes []byte) error {
 }
 
 func Exec(client pb.ContainerServiceClient, id uint32, args []string) error {
-	termFd := int(os.Stdin.Fd())
+	inputFd := int(os.Stdin.Fd())
 
-	if !term.IsTerminal(termFd) {
+	if !term.IsTerminal(inputFd) {
 		return fmt.Errorf("standard input must be a terminal for container exec")
 	}
 
-	oldState, err := term.MakeRaw(termFd)
+	oldState, err := term.MakeRaw(inputFd)
 	if err != nil {
-		return fmt.Errorf("failed to put the terminal into a raw mode: %w", err)
+		return fmt.Errorf("failed to put the terminal into raw mode: %w", err)
 	}
-	defer term.Restore(termFd, oldState)
+	defer term.Restore(inputFd, oldState)
 
-	// TODO: #9 container exec not working on Windows Git Bash and Powershell
-	width, height, err := term.GetSize(termFd)
+	output := os.Stdout
+	width, height, err := term.GetSize(inputFd)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve the size of the terminal: %w", err)
+		width, height, err = term.GetSize(int(output.Fd()))
+		if err != nil {
+			return fmt.Errorf("failed to retrieve the size of the terminal: %w", err)
+		}
 	}
 
 	stream, err := client.Exec(context.Background())
@@ -187,13 +190,13 @@ func Exec(client pb.ContainerServiceClient, id uint32, args []string) error {
 		}
 		switch p := resp.Output.(type) {
 		case *pb.ContainerExecResponse_Stdout:
-			os.Stdout.Write(p.Stdout)
+			output.Write(p.Stdout)
 		case *pb.ContainerExecResponse_ExitCode:
 			exitCode = int(p.ExitCode)
 		}
 	}
 
-	if err := term.Restore(termFd, oldState); err != nil {
+	if err := term.Restore(inputFd, oldState); err != nil {
 		return err
 	}
 
