@@ -27,6 +27,7 @@ const (
 	ContainerService_Exec_FullMethodName   = "/bx2cloud.ContainerService/Exec"
 	ContainerService_Start_FullMethodName  = "/bx2cloud.ContainerService/Start"
 	ContainerService_Stop_FullMethodName   = "/bx2cloud.ContainerService/Stop"
+	ContainerService_Logs_FullMethodName   = "/bx2cloud.ContainerService/Logs"
 )
 
 // ContainerServiceClient is the client API for ContainerService service.
@@ -40,6 +41,7 @@ type ContainerServiceClient interface {
 	Exec(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ContainerExecRequest, ContainerExecResponse], error)
 	Start(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*Container, error)
 	Stop(ctx context.Context, in *ContainerIdentificationRequest, opts ...grpc.CallOption) (*Container, error)
+	Logs(ctx context.Context, in *ContainerLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ContainerLogsResponse], error)
 }
 
 type containerServiceClient struct {
@@ -132,6 +134,25 @@ func (c *containerServiceClient) Stop(ctx context.Context, in *ContainerIdentifi
 	return out, nil
 }
 
+func (c *containerServiceClient) Logs(ctx context.Context, in *ContainerLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ContainerLogsResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ContainerService_ServiceDesc.Streams[2], ContainerService_Logs_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ContainerLogsRequest, ContainerLogsResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ContainerService_LogsClient = grpc.ServerStreamingClient[ContainerLogsResponse]
+
 // ContainerServiceServer is the server API for ContainerService service.
 // All implementations must embed UnimplementedContainerServiceServer
 // for forward compatibility.
@@ -143,6 +164,7 @@ type ContainerServiceServer interface {
 	Exec(grpc.BidiStreamingServer[ContainerExecRequest, ContainerExecResponse]) error
 	Start(context.Context, *ContainerIdentificationRequest) (*Container, error)
 	Stop(context.Context, *ContainerIdentificationRequest) (*Container, error)
+	Logs(*ContainerLogsRequest, grpc.ServerStreamingServer[ContainerLogsResponse]) error
 	mustEmbedUnimplementedContainerServiceServer()
 }
 
@@ -173,6 +195,9 @@ func (UnimplementedContainerServiceServer) Start(context.Context, *ContainerIden
 }
 func (UnimplementedContainerServiceServer) Stop(context.Context, *ContainerIdentificationRequest) (*Container, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
+func (UnimplementedContainerServiceServer) Logs(*ContainerLogsRequest, grpc.ServerStreamingServer[ContainerLogsResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
 }
 func (UnimplementedContainerServiceServer) mustEmbedUnimplementedContainerServiceServer() {}
 func (UnimplementedContainerServiceServer) testEmbeddedByValue()                          {}
@@ -303,6 +328,17 @@ func _ContainerService_Stop_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContainerService_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ContainerLogsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ContainerServiceServer).Logs(m, &grpc.GenericServerStream[ContainerLogsRequest, ContainerLogsResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ContainerService_LogsServer = grpc.ServerStreamingServer[ContainerLogsResponse]
+
 // ContainerService_ServiceDesc is the grpc.ServiceDesc for ContainerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -342,6 +378,11 @@ var ContainerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _ContainerService_Exec_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "Logs",
+			Handler:       _ContainerService_Logs_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "container.proto",

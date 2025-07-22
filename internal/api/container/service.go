@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -281,6 +282,39 @@ func (s *service) Stop(ctx context.Context, req *pb.ContainerIdentificationReque
 	}
 
 	return mapModelToDto(container)
+}
+
+func (s *service) Logs(req *pb.ContainerLogsRequest, stream grpc.ServerStreamingServer[pb.ContainerLogsResponse]) error {
+	container, err := s.repository.Get(req.Identification.Id)
+	if err != nil {
+		return err
+	}
+
+	data := container.GetData()
+
+	r, err := s.containerLogger.Get(data.Id)
+	if err != nil {
+		return fmt.Errorf("failed to open container logs: %w", err)
+	}
+	defer r.Close()
+
+	buf := make([]byte, 8192)
+	for {
+		n, err := r.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(&pb.ContainerLogsResponse{
+			Content: buf[:n],
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func mapModelToDto(container interfaces.ContainerModel) (*pb.Container, error) {

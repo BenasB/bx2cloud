@@ -14,6 +14,7 @@ service ContainerService {
     rpc Exec (stream ContainerExecRequest) returns (stream ContainerExecResponse);
     rpc Start (ContainerIdentificationRequest) returns (Container);
     rpc Stop (ContainerIdentificationRequest) returns (Container);
+    rpc Logs (ContainerLogsRequest) returns (stream ContainerLogsResponse);
 }
 
 message ContainerIdentificationRequest {
@@ -62,4 +63,13 @@ message ContainerExecResponse {
         bytes stdout = 1;
         int32 exit_code = 2;
     }
+}
+
+message ContainerLogsRequest {
+    ContainerIdentificationRequest identification = 1;
+    bool follow = 2;
+}
+
+message ContainerLogsResponse {
+    bytes content = 1;
 }

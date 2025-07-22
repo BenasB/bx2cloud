@@ -278,6 +278,7 @@ func (r *libcontainerRepository) Create(creationModel *interfaces.ContainerCreat
 		UID:    int(creationModel.Spec.Process.User.UID),
 		GID:    int(creationModel.Spec.Process.User.GID),
 		Stdout: creationModel.Stdout,
+		Stderr: creationModel.Stdout,
 		// Not everything is mapped here (yet?)
 		Init: true,
 	}

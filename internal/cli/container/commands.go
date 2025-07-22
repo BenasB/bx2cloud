@@ -130,6 +130,23 @@ var Commands = []*common.CliCommand{
 					return exits.SUCCESS, nil
 				},
 			),
+			common.NewCliCommand(
+				"logs",
+				"Retrieves the logs of a specified container resource",
+				"<id>",
+				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+					client := pb.NewContainerServiceClient(conn)
+					id, exitCode, err := common.ParseUint32Arg(&args)
+					if err != nil {
+						return exitCode, fmt.Errorf("failed to parse 'id' argument: %w", err)
+					}
+
+					if err := Logs(client, id); err != nil {
+						return exits.CONTAINER_ERROR, err
+					}
+					return exits.SUCCESS, nil
+				},
+			),
 		},
 	),
 }

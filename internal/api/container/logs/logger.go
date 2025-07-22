@@ -1,7 +1,11 @@
 package logs
 
-import "os"
+import (
+	"io"
+	"os"
+)
 
 type Logger interface {
 	Init(containerId uint32) (*os.File, error)
+	Get(containerId uint32) (io.ReadCloser, error)
 }
