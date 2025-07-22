@@ -82,6 +82,10 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
+	if err := s.containerLogger.Remove(data.Id); err != nil {
+		return nil, err
+	}
+
 	if err := s.imagePuller.RemoveRootFs(data.Id); err != nil {
 		return nil, err
 	}

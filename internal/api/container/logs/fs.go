@@ -33,3 +33,8 @@ func (l *fsLogger) Get(containerId uint32) (io.ReadCloser, error) {
 	idString := strconv.FormatInt(int64(containerId), 10)
 	return os.Open(filepath.Join(l.root, idString))
 }
+
+func (l *fsLogger) Remove(containerId uint32) error {
+	idString := strconv.FormatInt(int64(containerId), 10)
+	return os.Remove(filepath.Join(l.root, idString))
+}
