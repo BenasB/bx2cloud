@@ -16,7 +16,6 @@ import (
 	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	_ "github.com/opencontainers/cgroups/devices"
 	"github.com/opencontainers/runc/libcontainer"
-	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runc/libcontainer/utils"
 	runspecs "github.com/opencontainers/runtime-spec/specs-go"
@@ -263,18 +262,9 @@ func (r *libcontainerRepository) Create(creationModel *interfaces.ContainerCreat
 	config.Labels = append(config.Labels, fmt.Sprintf("entrypointCustomization=%s", serializedEntryCustomization))
 	config.Labels = append(config.Labels, fmt.Sprintf("createdAt=%s", creationModel.CreatedAt.Format(time.RFC3339)))
 
-	container, err := r.createContainer(creationModel.Id, config, creationModel.Spec.Process)
-	if err != nil {
-		return nil, err
-	}
-
-	return r.mapToContainerModel(container)
-}
-
-func (r *libcontainerRepository) createContainer(id uint32, config *configs.Config, init *runspecs.Process) (*libcontainer.Container, error) {
 	container, err := libcontainer.Create(
 		r.root,
-		strconv.FormatInt(int64(id), 10),
+		strconv.FormatInt(int64(creationModel.Id), 10),
 		config,
 	)
 	if err != nil {
@@ -282,11 +272,12 @@ func (r *libcontainerRepository) createContainer(id uint32, config *configs.Conf
 	}
 
 	initProcess := &libcontainer.Process{
-		Args: init.Args,
-		Env:  init.Env,
-		Cwd:  init.Cwd,
-		UID:  int(init.User.UID),
-		GID:  int(init.User.GID),
+		Args:   creationModel.Spec.Process.Args,
+		Env:    creationModel.Spec.Process.Env,
+		Cwd:    creationModel.Spec.Process.Cwd,
+		UID:    int(creationModel.Spec.Process.User.UID),
+		GID:    int(creationModel.Spec.Process.User.GID),
+		Stdout: creationModel.Stdout,
 		// Not everything is mapped here (yet?)
 		Init: true,
 	}
@@ -301,7 +292,7 @@ func (r *libcontainerRepository) createContainer(id uint32, config *configs.Conf
 		initProcess.Wait()
 	}()
 
-	return container, nil
+	return r.mapToContainerModel(container)
 }
 
 func (r *libcontainerRepository) Delete(id uint32) (interfaces.ContainerModel, error) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
+	"github.com/BenasB/bx2cloud/internal/api/container/logs"
 	"github.com/BenasB/bx2cloud/internal/api/id"
 	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/pb"
@@ -23,6 +24,7 @@ type service struct {
 	configurator         configurator
 	imagePuller          images.Puller
 	ipamRepository       interfaces.IpamRepository
+	containerLogger      logs.Logger
 }
 
 func NewService(
@@ -31,6 +33,7 @@ func NewService(
 	configurator configurator,
 	imagePuller images.Puller,
 	ipamRepository interfaces.IpamRepository,
+	containerLogger logs.Logger,
 ) *service {
 	return &service{
 		repository:           containerRepository,
@@ -38,6 +41,7 @@ func NewService(
 		configurator:         configurator,
 		imagePuller:          imagePuller,
 		ipamRepository:       ipamRepository,
+		containerLogger:      containerLogger,
 	}
 }
 
@@ -56,6 +60,12 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		return nil, err
 	}
 
+	data := container.GetData()
+	subnetwork, err := s.subnetworkRepository.Get(data.SubnetworkId)
+	if err != nil {
+		return nil, err
+	}
+
 	state, err := container.GetState()
 	if err != nil {
 		log.Printf("Will skip killing the container process, since we can't determine if the container is in a running status: %v", err)
@@ -65,13 +75,6 @@ func (s *service) Delete(ctx context.Context, req *pb.ContainerIdentificationReq
 		if err := container.Stop(); err != nil {
 			return nil, err
 		}
-	}
-
-	data := container.GetData()
-
-	subnetwork, err := s.subnetworkRepository.Get(data.SubnetworkId)
-	if err != nil {
-		return nil, err
 	}
 
 	if err := s.configurator.Unconfigure(container, subnetwork); err != nil {
@@ -117,6 +120,11 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		return nil, fmt.Errorf("failed to allocate a new IP for the container: %w", err)
 	}
 
+	stdout, err := s.containerLogger.Init(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a file for the container logs: %w", err)
+	}
+
 	entrypointCust := &interfaces.ContainerProcessCustomization{
 		Entrypoint: req.Entrypoint,
 		Cmd:        req.Cmd,
@@ -144,6 +152,7 @@ func (s *service) Create(ctx context.Context, req *pb.ContainerCreationRequest) 
 		Spec:                    spec,
 		EntrypointCustomization: entrypointCust,
 		CreatedAt:               time.Now(),
+		Stdout:                  stdout,
 	}
 
 	container, err := s.repository.Create(creationModel)
@@ -220,6 +229,11 @@ func (s *service) Start(ctx context.Context, req *pb.ContainerIdentificationRequ
 		return nil, err
 	}
 
+	stdout, err := s.containerLogger.Init(data.Id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a file for the container logs: %w", err)
+	}
+
 	creationModel := &interfaces.ContainerCreationModel{
 		Id:                      data.Id,
 		Ip:                      data.Ip,
@@ -228,6 +242,7 @@ func (s *service) Start(ctx context.Context, req *pb.ContainerIdentificationRequ
 		Spec:                    data.Spec,
 		EntrypointCustomization: data.EntrypointCustomization,
 		CreatedAt:               data.CreatedAt,
+		Stdout:                  stdout,
 	}
 
 	newContainer, err := s.repository.Create(creationModel)

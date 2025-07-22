@@ -6,6 +6,7 @@ import (
 
 	"github.com/BenasB/bx2cloud/internal/api/container"
 	"github.com/BenasB/bx2cloud/internal/api/container/images"
+	"github.com/BenasB/bx2cloud/internal/api/container/logs"
 	"github.com/BenasB/bx2cloud/internal/api/interfaces"
 	"github.com/BenasB/bx2cloud/internal/api/introspection"
 	"github.com/BenasB/bx2cloud/internal/api/network"
@@ -50,9 +51,14 @@ func main() {
 		log.Fatalf("Failed to create the image puller: %v", err)
 	}
 
+	containerLogger, err := logs.NewFsLogger()
+	if err != nil {
+		log.Fatalf("Failed to create the container logger: %v", err)
+	}
+
 	pb.RegisterNetworkServiceServer(grpcServer, network.NewService(networkRepository, subnetworkRepository, networkConfigurator))
 	pb.RegisterSubnetworkServiceServer(grpcServer, subnetwork.NewService(subnetworkRepository, networkRepository, subnetworkConfigurator, ipamRepository))
-	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator, imagePuller, ipamRepository))
+	pb.RegisterContainerServiceServer(grpcServer, container.NewService(containerRepository, subnetworkRepository, containerConfigurator, imagePuller, ipamRepository, containerLogger))
 	pb.RegisterIntrospectionServiceServer(grpcServer, introspection.NewService())
 
 	log.Printf("Starting server on %s", address)
