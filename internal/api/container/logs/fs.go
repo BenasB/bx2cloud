@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,7 +28,7 @@ func (l *fsLogger) Init(containerId uint32) (*os.File, error) {
 	return os.OpenFile(filepath.Join(l.root, idString), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 }
 
-func (l *fsLogger) Get(containerId uint32) (io.ReadCloser, error) {
+func (l *fsLogger) Get(containerId uint32) (*os.File, error) {
 	idString := strconv.FormatInt(int64(containerId), 10)
 	return os.Open(filepath.Join(l.root, idString))
 }

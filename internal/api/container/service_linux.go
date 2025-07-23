@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"os/exec"
+	"unsafe"
 
 	"github.com/BenasB/bx2cloud/internal/api/pb"
 	runspecs "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
+	"google.golang.org/grpc"
 )
 
 func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
@@ -137,4 +140,107 @@ func (s *service) Exec(stream pb.ContainerService_ExecServer) error {
 	log.Printf("Successfully finished an additional process in container %d", init.Identification.Id)
 
 	return nil
+}
+
+func (s *service) Logs(req *pb.ContainerLogsRequest, stream grpc.ServerStreamingServer[pb.ContainerLogsResponse]) error {
+	container, err := s.repository.Get(req.Identification.Id)
+	if err != nil {
+		return err
+	}
+
+	data := container.GetData()
+
+	f, err := s.containerLogger.Get(data.Id)
+	if err != nil {
+		return fmt.Errorf("failed to open container logs: %w", err)
+	}
+	defer f.Close()
+
+	buf := make([]byte, 8192)
+	for {
+		n, err := f.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(&pb.ContainerLogsResponse{
+			Content: buf[:n],
+		}); err != nil {
+			return err
+		}
+	}
+
+	if !req.Follow {
+		return nil
+	}
+
+	fd, err := unix.InotifyInit()
+	if err != nil {
+		return fmt.Errorf("failed to initialize log watching: %w", err)
+	}
+	defer unix.Close(fd)
+
+	// We can't use IN_DELETE_SELF here, because it is not sent when the file is deleted (because inotify monitors inodes)
+	wd, err := unix.InotifyAddWatch(fd, f.Name(), unix.IN_MODIFY|unix.IN_ATTRIB)
+	if err != nil {
+		return fmt.Errorf("failed to watch logs: %w", err)
+	}
+	defer unix.InotifyRmWatch(fd, uint32(wd))
+
+	for {
+		n, err := unix.Read(fd, buf)
+		if err != nil {
+			return fmt.Errorf("failed to read new changes to logs: %w", err)
+		}
+
+		offset := 0
+		for offset < n {
+			raw := (*unix.InotifyEvent)(unsafe.Pointer(&buf[offset]))
+			mask := raw.Mask
+			offset += unix.SizeofInotifyEvent + int(raw.Len)
+
+			if mask&unix.IN_ATTRIB > 0 {
+				_, err := os.Stat(f.Name())
+				if err != nil {
+					return fmt.Errorf("log file no longer exists")
+				}
+				continue
+			}
+
+			currentOffset, err := f.Seek(0, io.SeekCurrent)
+			if err != nil {
+				return fmt.Errorf("failed to determine log reader's offset: %w", err)
+			}
+
+			fileInfo, err := f.Stat()
+			if err != nil {
+				return fmt.Errorf("log file no longer exists")
+			}
+
+			// If the container was restarted, the log file was truncated, so reset the reader offset
+			if fileInfo.Size() < currentOffset {
+				_, err = f.Seek(0, io.SeekStart)
+				if err != nil {
+					return fmt.Errorf("failed to seek to start after truncation: %w", err)
+				}
+			}
+
+			for {
+				n, err := f.Read(buf)
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					return err
+				}
+				if err := stream.Send(&pb.ContainerLogsResponse{
+					Content: buf[:n],
+				}); err != nil {
+					return err
+				}
+			}
+		}
+	}
 }
