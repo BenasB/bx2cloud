@@ -15,7 +15,7 @@ import (
 var flags = struct {
 	follow bool
 }{
-	follow: true,
+	follow: false,
 }
 
 var Commands = []*common.CliCommand{
@@ -154,7 +154,7 @@ var Commands = []*common.CliCommand{
 					return exits.SUCCESS, nil
 				},
 				func(fs *flag.FlagSet) {
-					fs.BoolVar(&flags.follow, "f", false, "follow the log file")
+					fs.BoolVar(&flags.follow, "f", flags.follow, "follow the log file")
 				},
 			),
 		},
