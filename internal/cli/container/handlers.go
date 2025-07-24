@@ -233,12 +233,12 @@ func Stop(client pb.ContainerServiceClient, id uint32) error {
 	return nil
 }
 
-func Logs(client pb.ContainerServiceClient, id uint32) error {
+func Logs(client pb.ContainerServiceClient, id uint32, follow bool) error {
 	req := &pb.ContainerLogsRequest{
 		Identification: &pb.ContainerIdentificationRequest{
 			Id: id,
 		},
-		Follow: false, // TODO: (This PR) pass follow from CLI flags
+		Follow: follow,
 	}
 
 	stream, err := client.Logs(context.Background(), req)
