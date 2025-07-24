@@ -507,6 +507,102 @@ func (*ContainerExecResponse_Stdout) isContainerExecResponse_Output() {}
 
 func (*ContainerExecResponse_ExitCode) isContainerExecResponse_Output() {}
 
+type ContainerLogsRequest struct {
+	state          protoimpl.MessageState          `protogen:"open.v1"`
+	Identification *ContainerIdentificationRequest `protobuf:"bytes,1,opt,name=identification,proto3" json:"identification,omitempty"`
+	Follow         bool                            `protobuf:"varint,2,opt,name=follow,proto3" json:"follow,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ContainerLogsRequest) Reset() {
+	*x = ContainerLogsRequest{}
+	mi := &file_container_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContainerLogsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContainerLogsRequest) ProtoMessage() {}
+
+func (x *ContainerLogsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_container_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContainerLogsRequest.ProtoReflect.Descriptor instead.
+func (*ContainerLogsRequest) Descriptor() ([]byte, []int) {
+	return file_container_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ContainerLogsRequest) GetIdentification() *ContainerIdentificationRequest {
+	if x != nil {
+		return x.Identification
+	}
+	return nil
+}
+
+func (x *ContainerLogsRequest) GetFollow() bool {
+	if x != nil {
+		return x.Follow
+	}
+	return false
+}
+
+type ContainerLogsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Content       []byte                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContainerLogsResponse) Reset() {
+	*x = ContainerLogsResponse{}
+	mi := &file_container_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContainerLogsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContainerLogsResponse) ProtoMessage() {}
+
+func (x *ContainerLogsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_container_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContainerLogsResponse.ProtoReflect.Descriptor instead.
+func (*ContainerLogsResponse) Descriptor() ([]byte, []int) {
+	return file_container_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ContainerLogsResponse) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
 var File_container_proto protoreflect.FileDescriptor
 
 const file_container_proto_rawDesc = "" +
@@ -551,7 +647,12 @@ const file_container_proto_rawDesc = "" +
 	"\x15ContainerExecResponse\x12\x18\n" +
 	"\x06stdout\x18\x01 \x01(\fH\x00R\x06stdout\x12\x1d\n" +
 	"\texit_code\x18\x02 \x01(\x05H\x00R\bexitCodeB\b\n" +
-	"\x06output2\xfa\x03\n" +
+	"\x06output\"\x80\x01\n" +
+	"\x14ContainerLogsRequest\x12P\n" +
+	"\x0eidentification\x18\x01 \x01(\v2(.bx2cloud.ContainerIdentificationRequestR\x0eidentification\x12\x16\n" +
+	"\x06follow\x18\x02 \x01(\bR\x06follow\"1\n" +
+	"\x15ContainerLogsResponse\x12\x18\n" +
+	"\acontent\x18\x01 \x01(\fR\acontent2\xc5\x04\n" +
 	"\x10ContainerService\x12D\n" +
 	"\x03Get\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.Container\x125\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x13.bx2cloud.Container0\x01\x12A\n" +
@@ -559,7 +660,8 @@ const file_container_proto_rawDesc = "" +
 	"\x06Delete\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
 	"\x04Exec\x12\x1e.bx2cloud.ContainerExecRequest\x1a\x1f.bx2cloud.ContainerExecResponse(\x010\x01\x12F\n" +
 	"\x05Start\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.Container\x12E\n" +
-	"\x04Stop\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.ContainerB,Z*github.com/BenasB/bx2cloud/internal/api/pbb\x06proto3"
+	"\x04Stop\x12(.bx2cloud.ContainerIdentificationRequest\x1a\x13.bx2cloud.Container\x12I\n" +
+	"\x04Logs\x12\x1e.bx2cloud.ContainerLogsRequest\x1a\x1f.bx2cloud.ContainerLogsResponse0\x01B,Z*github.com/BenasB/bx2cloud/internal/api/pbb\x06proto3"
 
 var (
 	file_container_proto_rawDescOnce sync.Once
@@ -573,7 +675,7 @@ func file_container_proto_rawDescGZIP() []byte {
 	return file_container_proto_rawDescData
 }
 
-var file_container_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_container_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_container_proto_goTypes = []any{
 	(*ContainerIdentificationRequest)(nil),     // 0: bx2cloud.ContainerIdentificationRequest
 	(*ContainerCreationRequest)(nil),           // 1: bx2cloud.ContainerCreationRequest
@@ -581,33 +683,38 @@ var file_container_proto_goTypes = []any{
 	(*ContainerExecRequest)(nil),               // 3: bx2cloud.ContainerExecRequest
 	(*ContainerExecInitializationRequest)(nil), // 4: bx2cloud.ContainerExecInitializationRequest
 	(*ContainerExecResponse)(nil),              // 5: bx2cloud.ContainerExecResponse
-	(*timestamppb.Timestamp)(nil),              // 6: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                      // 7: google.protobuf.Empty
+	(*ContainerLogsRequest)(nil),               // 6: bx2cloud.ContainerLogsRequest
+	(*ContainerLogsResponse)(nil),              // 7: bx2cloud.ContainerLogsResponse
+	(*timestamppb.Timestamp)(nil),              // 8: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                      // 9: google.protobuf.Empty
 }
 var file_container_proto_depIdxs = []int32{
-	6,  // 0: bx2cloud.Container.createdAt:type_name -> google.protobuf.Timestamp
-	6,  // 1: bx2cloud.Container.startedAt:type_name -> google.protobuf.Timestamp
+	8,  // 0: bx2cloud.Container.createdAt:type_name -> google.protobuf.Timestamp
+	8,  // 1: bx2cloud.Container.startedAt:type_name -> google.protobuf.Timestamp
 	4,  // 2: bx2cloud.ContainerExecRequest.initialization:type_name -> bx2cloud.ContainerExecInitializationRequest
 	0,  // 3: bx2cloud.ContainerExecInitializationRequest.identification:type_name -> bx2cloud.ContainerIdentificationRequest
-	0,  // 4: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
-	7,  // 5: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
-	1,  // 6: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
-	0,  // 7: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
-	3,  // 8: bx2cloud.ContainerService.Exec:input_type -> bx2cloud.ContainerExecRequest
-	0,  // 9: bx2cloud.ContainerService.Start:input_type -> bx2cloud.ContainerIdentificationRequest
-	0,  // 10: bx2cloud.ContainerService.Stop:input_type -> bx2cloud.ContainerIdentificationRequest
-	2,  // 11: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
-	2,  // 12: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
-	2,  // 13: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
-	7,  // 14: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
-	5,  // 15: bx2cloud.ContainerService.Exec:output_type -> bx2cloud.ContainerExecResponse
-	2,  // 16: bx2cloud.ContainerService.Start:output_type -> bx2cloud.Container
-	2,  // 17: bx2cloud.ContainerService.Stop:output_type -> bx2cloud.Container
-	11, // [11:18] is the sub-list for method output_type
-	4,  // [4:11] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	0,  // 4: bx2cloud.ContainerLogsRequest.identification:type_name -> bx2cloud.ContainerIdentificationRequest
+	0,  // 5: bx2cloud.ContainerService.Get:input_type -> bx2cloud.ContainerIdentificationRequest
+	9,  // 6: bx2cloud.ContainerService.List:input_type -> google.protobuf.Empty
+	1,  // 7: bx2cloud.ContainerService.Create:input_type -> bx2cloud.ContainerCreationRequest
+	0,  // 8: bx2cloud.ContainerService.Delete:input_type -> bx2cloud.ContainerIdentificationRequest
+	3,  // 9: bx2cloud.ContainerService.Exec:input_type -> bx2cloud.ContainerExecRequest
+	0,  // 10: bx2cloud.ContainerService.Start:input_type -> bx2cloud.ContainerIdentificationRequest
+	0,  // 11: bx2cloud.ContainerService.Stop:input_type -> bx2cloud.ContainerIdentificationRequest
+	6,  // 12: bx2cloud.ContainerService.Logs:input_type -> bx2cloud.ContainerLogsRequest
+	2,  // 13: bx2cloud.ContainerService.Get:output_type -> bx2cloud.Container
+	2,  // 14: bx2cloud.ContainerService.List:output_type -> bx2cloud.Container
+	2,  // 15: bx2cloud.ContainerService.Create:output_type -> bx2cloud.Container
+	9,  // 16: bx2cloud.ContainerService.Delete:output_type -> google.protobuf.Empty
+	5,  // 17: bx2cloud.ContainerService.Exec:output_type -> bx2cloud.ContainerExecResponse
+	2,  // 18: bx2cloud.ContainerService.Start:output_type -> bx2cloud.Container
+	2,  // 19: bx2cloud.ContainerService.Stop:output_type -> bx2cloud.Container
+	7,  // 20: bx2cloud.ContainerService.Logs:output_type -> bx2cloud.ContainerLogsResponse
+	13, // [13:21] is the sub-list for method output_type
+	5,  // [5:13] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_container_proto_init() }
@@ -630,7 +737,7 @@ func file_container_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_container_proto_rawDesc), len(file_container_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

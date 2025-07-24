@@ -59,4 +59,5 @@ type ContainerCreationModel struct {
 	CreatedAt               time.Time
 	EntrypointCustomization *ContainerProcessCustomization
 	Spec                    *runspecs.Spec
+	Stdout                  *os.File
 }

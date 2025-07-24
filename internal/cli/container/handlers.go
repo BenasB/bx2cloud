@@ -232,3 +232,30 @@ func Stop(client pb.ContainerServiceClient, id uint32) error {
 
 	return nil
 }
+
+func Logs(client pb.ContainerServiceClient, id uint32, follow bool) error {
+	req := &pb.ContainerLogsRequest{
+		Identification: &pb.ContainerIdentificationRequest{
+			Id: id,
+		},
+		Follow: follow,
+	}
+
+	stream, err := client.Logs(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(os.Stdout, string(resp.Content))
+	}
+
+	return nil
+}

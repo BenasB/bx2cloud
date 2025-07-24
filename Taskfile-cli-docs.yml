@@ -50,41 +50,85 @@ tasks:
         generate_flags_table() {
           local source_file="$1"
           local flags_block
-          flags_block=$(awk '/^flags:/{found=1; next} found' "$source_file")
-          if [[ -n "$flags_block" && "$(echo "$flags_block" | xargs | tr '[:upper:]' '[:lower:]')" != "none" ]]; then
+          flags_block=$(sed -n '/^flags:/,$p' "$source_file" | sed '1d')
+
+          if [[ -n "$flags_block" && "$(echo "$flags_block" | xargs)" != "none" ]]; then
             echo "## Flags"
             echo ""
             echo "| Flag | Type | Description | Default |"
             echo "|------|------|-------------|---------|"
+            
             printf "%s\n" "$flags_block" | awk '
-              function output_flag() {
-                  if (name == "") return;
+              function process_buffer() {
+                  if (buffer == "") return;
+
+                  n_lines = split(buffer, lines, "\n");
+                  split(lines[1], flag_parts, /[ \t]+/);
+                  name = flag_parts[1];
+                  
+                  rest_of_first_line = "";
+                  for (i = 2; i <= length(flag_parts); i++) {
+                      rest_of_first_line = (rest_of_first_line == "" ? "" : rest_of_first_line " ") flag_parts[i];
+                  }
+
+                  if (n_lines > 1) {
+                      type = rest_of_first_line;
+                      if (type == "") { type = "bool"; }
+                      description = "";
+                      for (i = 2; i <= n_lines; i++) {
+                          line_content = lines[i];
+                          gsub(/^[ \t]+/, "", line_content);
+                          description = (description == "" ? "" : description " ") line_content;
+                      }
+                  } else {
+                      type = "bool";
+                      description = rest_of_first_line;
+                  }
+
                   default_val = "";
+                  default_found = 0;
+
                   if (match(description, /\(default "([^"]*)"\)/, m)) {
                       default_val = m[1];
                       gsub(/\(default "[^"]*"\)/, "", description);
+                      default_found = 1;
                   } else if (match(description, /\(default ([^)]*)\)/, m)) {
                       default_val = m[1];
                       gsub(/\(default [^)]*\)/, "", description);
+                      default_found = 1;
                   }
+
+                  if (!default_found) {
+                      if (type == "bool") {
+                          default_val = "false";
+                      } else if (type ~ /^(u?int|u?int(8|16|32|64))$/) {
+                          default_val = "0";
+                      } else if (type ~ /^float(32|64)$/) {
+                          default_val = "0.0";
+                      } else if (type == "duration") {
+                          default_val = "0s";
+                      }
+                  }
+                  
                   gsub(/^[ \t]+|[ \t]+$/, "", description);
                   gsub(/<[^>]+>/, "`&`", description);
-                  type_cell = (type == "") ? "" : "`" type "`";
-                  printf "| `%s` | %s | %s | %s |\n", name, type_cell, description, default_val;
+                  
+                  printf "| `%s` | `%s` | %s | %s |\n", name, type, description, default_val;
               }
+
               /^[[:space:]]*-/ {
-                  output_flag();
-                  name = $1;
-                  type = (NF > 1) ? $2 : "";
-                  description = "";
-                  next;
+                  process_buffer();
+                  buffer = $0;
+                  gsub(/^[ \t]+/, "", buffer);
               }
-              /^[[:space:]]{2,}/ {
-                  line_content = $0;
-                  gsub(/^[ \t]+/, "", line_content);
-                  description = (description == "") ? line_content : description " " line_content;
+
+              !/^[[:space:]]*-/ {
+                  buffer = buffer "\n" $0;
               }
-              END { output_flag(); }
+
+              END {
+                  process_buffer();
+              }
             '
           fi
         }

@@ -1,6 +1,7 @@
 package container
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,12 @@ import (
 	"github.com/BenasB/bx2cloud/internal/cli/exits"
 	"google.golang.org/grpc"
 )
+
+var flags = struct {
+	follow bool
+}{
+	follow: false,
+}
 
 var Commands = []*common.CliCommand{
 	common.NewCliSubcommand(
@@ -128,6 +135,26 @@ var Commands = []*common.CliCommand{
 						return exits.CONTAINER_ERROR, err
 					}
 					return exits.SUCCESS, nil
+				},
+			),
+			common.NewCliCommandWithFlags(
+				"logs",
+				"Retrieves the logs of a specified container resource",
+				"<id>",
+				func(args []string, conn *grpc.ClientConn) (exits.ExitCode, error) {
+					client := pb.NewContainerServiceClient(conn)
+					id, exitCode, err := common.ParseUint32Arg(&args)
+					if err != nil {
+						return exitCode, fmt.Errorf("failed to parse 'id' argument: %w", err)
+					}
+
+					if err := Logs(client, id, flags.follow); err != nil {
+						return exits.CONTAINER_ERROR, err
+					}
+					return exits.SUCCESS, nil
+				},
+				func(fs *flag.FlagSet) {
+					fs.BoolVar(&flags.follow, "f", flags.follow, "follow the log file")
 				},
 			),
 		},
